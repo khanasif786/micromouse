@@ -22,14 +22,42 @@ class controller():
         self.msg.angular.x = 0 
         self.msg.angular.y = 0
         self.msg.angular.z = 0.2
+
+        self.Array = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+                      0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+                      0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+                      0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+                      0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+                      0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+                      0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+                      0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+                      0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+                      0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+                      0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+                      0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+                      0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+                      0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+                      0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+                      0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
         #required varibles:
+        
+        self.x = LaserScan()
+        #self.y =  self.x.ranges
 
         # Publishers here
         self.velocity_pub = rospy.Publisher("cmd_vel",Twist,queue_size=10)
         #Subscribefrs here
-        rospy.Subscriber("/my_mm_robot/laser/scan ",)
+        rospy.Subscriber("/my_mm_robot/laser/scan",LaserScan,self.laser_callback)
         
+    def laser_callback(self,msg):
+        self.x = msg
+
+
     def run(self):
+        try:
+            print(self.x.ranges[1])
+        except:
+            print("wait!!!")
         # main running function\
         self.velocity_pub.publish(self.msg)
         pass
