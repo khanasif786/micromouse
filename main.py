@@ -90,7 +90,7 @@ class controller():
     def odom_callback(self,msg):
         self.odom = msg
         self.coordinates[0] = int((self.odom.pose.pose.position.x + 1.446 + 0.090375 )/(0.18075)) - 1 # orientation 0.08 0.005
-        self.coordinates[1] = -(int((self.odom.pose.pose.position.y - 1.446  -0.090375)/(0.18075)) + 1)
+        self.coordinates[1] = int((-self.odom.pose.pose.position.y + 1.446  +0.090375)/(0.18075)) - 1
         if(self.coordinates[0] == -1):
             self.coordinates[0] = 0
         if(self.coordinates[1] == -1):
@@ -134,13 +134,13 @@ class controller():
             self.msg.angular.z = 0.2
             self.velocity_pub.publish(self.msg)
             current_direction = self.GetDirection()
-            print(current_direction)
+            #print(current_direction)
 
         while(current_direction=="inbetween"  ):
             self.msg.angular.z = 0.2
             self.velocity_pub.publish(self.msg)
             current_direction = self.GetDirection() 
-            print(current_direction)  
+            #print(current_direction)  
 
         self.msg.angular.z = 0.0
         self.velocity_pub.publish(self.msg)
@@ -186,13 +186,13 @@ class controller():
             self.msg.angular.z = -0.2
             self.velocity_pub.publish(self.msg)
             current_direction = self.GetDirection()
-            print(current_direction)
+            #print(current_direction)
 
         while(current_direction=="inbetween"  ):
             self.msg.angular.z = -0.2
             self.velocity_pub.publish(self.msg)
             current_direction = self.GetDirection() 
-            print(current_direction)  
+            #print(current_direction)  
 
         self.msg.angular.z = 0.0
         self.velocity_pub.publish(self.msg)
@@ -303,12 +303,17 @@ class controller():
     def run(self):
         #print(self.GetDirection())
         where_to_go = self.where_to_go()
+        print(where_to_go)
         if(where_to_go == "F"):
             self.GoForward()
             if self.orient == 0:
                 self.xy = [self.xy[0],self.xy[1]+1]
             elif self.orient == 3:
                 self.xy = [self.xy[0]+1,self.xy[1]]
+            elif self.orient == 2:
+                self.xy = [self.xy[0],self.xy[1]-1]
+            elif self.orient == 1:
+                self.xy = [self.xy[0]-1,self.xy[1]]
 
         elif(where_to_go == "L"):
             self.GoLeft()
