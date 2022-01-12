@@ -168,7 +168,7 @@ def updateWalls(x,y,orient,L,R,F):
         cells[y][x]= 15
 #done
 def isAccessible(x,y,x1,y1):
-    '''returns True if mouse can move to x1,y1 from x,y (two adjescent cells)
+    '''returns True if mouse can move to x1,y1 from x,y (two adjacent cells)
     '''
     #if (cells[y][x]==15):
     #    return (True)
