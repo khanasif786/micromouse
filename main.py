@@ -27,7 +27,7 @@ class controller():
         self.msg.linear.z = 0
         self.msg.angular.x = 0 
         self.msg.angular.y = 0
-        self.msg.angular.z = 0.2
+        self.msg.angular.z = 0
         self.flag = 0
         self.cells = [[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
                       [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
@@ -64,6 +64,8 @@ class controller():
                      [14,13,12,11,10,9,8,7,7,8,9,10,11,12,13,14]]
 
         #required variables:
+        self.angular_speed = 0.4 # change this to change linear speed
+        self.linear_speed = 0.39  # change this to change angular speed
         self.leftwall_distance = 0
         self.rightwall_distance = 0
         self.forwardwall_distance = 0
@@ -152,13 +154,13 @@ class controller():
         current_direction = self.GetDirection()
 
         while(current_direction!="inbetween" ):
-            self.msg.angular.z = 0.2
+            self.msg.angular.z = self.angular_speed
             self.velocity_pub.publish(self.msg)
             current_direction = self.GetDirection()
             #print(current_direction)
 
         while(current_direction=="inbetween"  ):
-            self.msg.angular.z = 0.2
+            self.msg.angular.z = self.angular_speed
             self.velocity_pub.publish(self.msg)
             current_direction = self.GetDirection() 
             #print(current_direction)  
@@ -169,7 +171,7 @@ class controller():
         self.flag = 1
 
     def GoForward(self):
-        self.msg.linear.x = 0.1
+        self.msg.linear.x = self.linear_speed
         self.msg.linear.y = 0
         self.msg.linear.z = 0
         self.msg.angular.x = 0
@@ -204,13 +206,13 @@ class controller():
         current_direction = self.GetDirection()
 
         while(current_direction!="inbetween" ):
-            self.msg.angular.z = -0.2
+            self.msg.angular.z = -self.angular_speed
             self.velocity_pub.publish(self.msg)
             current_direction = self.GetDirection()
             #print(current_direction)
 
         while(current_direction=="inbetween"  ):
-            self.msg.angular.z = -0.2
+            self.msg.angular.z = -self.angular_speed
             self.velocity_pub.publish(self.msg)
             current_direction = self.GetDirection() 
             #print(current_direction)  
