@@ -14,7 +14,7 @@ from sensor_msgs.msg import LaserScan
 import tf
 from nav_msgs.msg import Odometry
 
-maze_width = 16 
+maze_width = 16
 
 class controller():
     # constructor here
@@ -80,6 +80,10 @@ class controller():
         self.WallForward = False
         self.xprev=0
         self.yprev=0
+        self.error = 0
+        self.perror = 0.01
+        self.p = 7
+        self.d= 250 # 250 shi hai
         # Publishers here
         self.velocity_pub = rospy.Publisher("cmd_vel",Twist,queue_size=10)
         #Subscribefrs here
@@ -112,8 +116,21 @@ class controller():
         self.odom = msg
         self.coordinates[0] = int((self.odom.pose.pose.position.x + 1.446 + 0.090375 )/(0.18075)) - 1 # orientation 0.08 0.005
         self.coordinates[1] = (int((-self.odom.pose.pose.position.y + 1.446  +0.090375)/(0.18075)) - 1)
-        print("real x is ",self.coordinates[0]),
-        print("real y is ",self.coordinates[1])
+        #print("real x is ",self.coordinates[0]),
+        #print("real y is ",self.coordinates[1])
+        if self.orient == 0:
+            self.error = self.odom.pose.pose.position.x + ((self.xy[0]-7)*(0.18075) - 0.090375)
+            #print("error is",self.error)
+        elif self.orient == 2:
+            self.error = -(self.odom.pose.pose.position.x + ((self.xy[0]-7)*(0.18075) - 0.090375))
+            #print("error is",self.error)
+        elif self.orient == 3:
+            self.error = self.odom.pose.pose.position.y - ((8-self.xy[1])*(0.18075) - 0.090375)
+            #print("error is",self.error)
+        elif self.orient == 1:
+            self.error = -(self.odom.pose.pose.position.y - ((8-self.xy[1])*(0.18075) - 0.090375))
+            #print("error is",self.error)
+    
         if(self.coordinates[0] == -1):
             self.coordinates[0] = 0
         if(self.coordinates[1] == -1):
@@ -128,17 +145,17 @@ class controller():
         # pass
         #print(self.angle)
     
-    def GetDirection(self):
+    def GetDirection(self): #0.03 error was working first
         current_angle = self.angle
-        if(abs(1.57-current_angle)<0.03):
+        if(abs(1.57-current_angle)<0.1):
             return str("west")
-        elif(abs(0-current_angle)<0.03):
+        elif(abs(0-current_angle)<0.1):
             return str("north")
-        elif(abs(-1.57-current_angle)<0.03):
+        elif(abs(-1.57-current_angle)<0.1):
             return str("east")
-        elif(abs(3.14-current_angle)<0.03):
+        elif(abs(3.14-current_angle)<0.1):
             return str("south")
-        elif(abs(-3.14-current_angle)<0.03):
+        elif(abs(-3.14-current_angle)<0.1):
             return str("south")
         else:
             return str("inbetween")
@@ -177,21 +194,49 @@ class controller():
         self.msg.angular.x = 0
         self.msg.angular.y = 0 
         self.msg.angular.z = 0
+        skip = 350 # 500 was working # 250 not
         if(self.orient == 0 or self.orient == 2):
+            i = 0
             self.now = rospy.Time.now().to_sec()
             while(abs(self.now-rospy.Time.now().to_sec())<1):
+                self.msg.angular.z = -self.p*self.error -self.d*(self.error-self.perror)
+                if(i%skip==0):
+                    print(-self.d*(self.error-self.perror))
+                    self.perror = self.error
                 self.velocity_pub.publish(self.msg)
+                i = i + 1
             current_y = self.coordinates[1]
+            i = 0
             while(self.coordinates[1]==current_y):
+                self.msg.angular.z = -self.p*self.error -self.d*(self.error-self.perror)
+                if(i%skip==0):
+                    print(-self.d*(self.error-self.perror))
+                    self.perror = self.error
                 self.velocity_pub.publish(self.msg)
+                i = i + 1
         else:
+            i = 0
             self.now = rospy.Time.now().to_sec() 
             while(abs(self.now-rospy.Time.now().to_sec())<1):
+                self.msg.angular.z = -self.p*self.error -self.d*(self.error-self.perror)
+                if(i%skip==0):
+                    print(-self.d*(self.error-self.perror))
+                    self.perror = self.error
                 self.velocity_pub.publish(self.msg)
+                i = i + 1
             current_x = self.coordinates[0]
+            i=0
             while(self.coordinates[0]==current_x):
+                self.msg.angular.z = -self.p*self.error -self.d*(self.error-self.perror)
+                if(i%skip==0):
+                    print(-self.d*(self.error-self.perror))
+                    self.perror = self.error
                 self.velocity_pub.publish(self.msg)
+                i = i + 1
         # stopping
+        self.perror = 0
+        self.error = 0
+        self.msg.angular.z = 0
         self.msg.linear.x = 0
         self.velocity_pub.publish(self.msg)
 
@@ -351,13 +396,6 @@ class controller():
         else:
             return False
     #-----------------------------------------------------
-    def floofFill2(self,y,x):
-        x0,y0,x1,y1,x2,y2,x3,y3 = self.getSurrounds(x,y)
-        if(self.isAccessible(x,y,x0,y0)):
-            if(not self.isCentre(x0,y0)):
-                self.flood[y0][x0] = self.flood[y][x] + 1
-
-        
         
     def floodFill(self,x,y,xprev,yprev):
         '''updates the flood matrix such that every square is consistant (current cell is x,y)
@@ -706,10 +744,10 @@ class controller():
             
             self.updateWalls(self.xy[0],self.xy[1],self.orient,self.WallLeft,self.WallRight,self.WallForward)     
    
-        for i in range(maze_width):
+        '''for i in range(maze_width):
             for j in range(maze_width):
                 print(str(self.flood[i][j]) + " "),
-            print("\n")
+            print("\n")'''
         #rospy.sleep(0.025)
         #os.system('clear')
 
@@ -717,9 +755,9 @@ class controller():
 
 if __name__ == '__main__':
     bot = controller()
-    print("Current Time:",rospy.Time.now().to_sec())
+    # wait so that time module initializes properly
     rospy.sleep(5)
-    r = rospy.Rate(30)
+    r = rospy.Rate(25)
     while not rospy.is_shutdown():
         bot.run()
         r.sleep()
