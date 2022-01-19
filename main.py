@@ -64,7 +64,8 @@ class controller():
                      [14,13,12,11,10,9,8,7,7,8,9,10,11,12,13,14]]
 
         #required variables:
-        self.angular_speed = 0.3 # change this to change linear speed
+        self.final_cells = [[7,7],[7,8],[8,7],[8,8]]
+        self.angular_speed = 0.14 # change this to change linear speed
         self.linear_speed = 0.39 # change this to change angular speed
         self.leftwall_distance = 0
         self.rightwall_distance = 0
@@ -85,7 +86,7 @@ class controller():
         self.p = 1.0 # last commit 7  # 2.7
         self.d = 14 # last commit 250 # 16
         self.max = 0.5
-        self.kp = 1
+        self.kp = 1.5
 
         # Publishers here
         self.velocity_pub = rospy.Publisher("cmd_vel",Twist,queue_size=10)
@@ -150,15 +151,15 @@ class controller():
     
     def GetDirection(self): #0.03 error was working first
         current_angle = self.angle
-        if(abs(1.57-current_angle)<0.15):
+        if(abs(1.57-current_angle)<0.03):
             return str("west")
-        elif(abs(0-current_angle)<0.15):
+        elif(abs(0-current_angle)<0.03):
             return str("north")
-        elif(abs(-1.57-current_angle)<0.15):
+        elif(abs(-1.57-current_angle)<0.03):
             return str("east")
-        elif(abs(3.14-current_angle)<0.07):
+        elif(abs(3.14-current_angle)<0.03):
             return str("south")
-        elif(abs(-3.14-current_angle)<0.07):
+        elif(abs(-3.14-current_angle)<0.03):
             return str("south")
         else:
             return str("inbetween")
@@ -166,9 +167,40 @@ class controller():
     def PID(self,error):
         if(self.orient == 0):
             angle_setpoint = (error/0.08)*0.8
+            #print(angle_setpoint)
+            angle_having = 0-self.angle
+            angle_error = angle_having - angle_setpoint
+            #print(angle_error)
+            self.msg.angular.z = self.kp*angle_error
+        
+        elif(self.orient == 2):
+            angle_setpoint = (error/0.08)*0.8
+            #print(angle_setpoint)
+            if self.angle < 3.14159 and self.angle > 0:
+                angle_having = 3.14159-self.angle
+            else:
+                angle_having = -3.14159-self.angle
+            
+            angle_error = angle_having - angle_setpoint
+            #print(angle_error)
+            self.msg.angular.z = self.kp*angle_error
+
+        elif(self.orient == 1):
+            angle_setpoint = (error/0.08)*0.8
+            #print(angle_setpoint)
+            angle_having = -1.57-self.angle
+            angle_error = angle_having - angle_setpoint
+            #print(angle_error)
+            self.msg.angular.z = self.kp*angle_error
+
+        else:
+            angle_setpoint = (error/0.08)*0.8
+            #print(angle_setpoint)
             angle_having = 1.57-self.angle
             angle_error = angle_having - angle_setpoint
+            #print(angle_error)
             self.msg.angular.z = self.kp*angle_error
+
 
     # Transitions Functions 
     # Left
@@ -180,7 +212,7 @@ class controller():
         self.msg.angular.y = 0
         current_direction = self.GetDirection()
         self.now = rospy.Time.now().to_sec() 
-        while(rospy.Time.now().to_sec()-self.now < 0.7  ): # current_direction!="inbetween"
+        while(rospy.Time.now().to_sec()-self.now < 1.3  ): # current_direction!="inbetween"
             self.msg.angular.z = self.angular_speed
             self.velocity_pub.publish(self.msg)
             current_direction = self.GetDirection()
@@ -209,7 +241,8 @@ class controller():
             i = 0
             self.now = rospy.Time.now().to_sec()
             while(abs(self.now-rospy.Time.now().to_sec())<0.025):
-                self.msg.angular.z = -self.p*self.error -self.d*(self.error-self.perror)
+                #self.msg.angular.z = -self.p*self.error -self.d*(self.error-self.perror)
+                self.PID(self.error)
                 if(i%skip==0):
                     #print(-self.d*(self.error-self.perror))
                     self.perror = self.error
@@ -218,7 +251,8 @@ class controller():
             current_y = self.coordinates[1]
             i = 0
             while(self.coordinates[1]==current_y):
-                self.msg.angular.z = -self.p*self.error -self.d*(self.error-self.perror)
+                self.PID(self.error)
+                #self.msg.angular.z = -self.p*self.error -self.d*(self.error-self.perror)
                 if(i%skip==0):
                     #print(-self.d*(self.error-self.perror))
                     self.perror = self.error
@@ -228,7 +262,8 @@ class controller():
             i = 0
             self.now = rospy.Time.now().to_sec() 
             while(abs(self.now-rospy.Time.now().to_sec())<0.025):
-                self.msg.angular.z = -self.p*self.error -self.d*(self.error-self.perror)
+                #self.msg.angular.z = -self.p*self.error -self.d*(self.error-self.perror)
+                self.PID(self.error)
                 if(i%skip==0):
                     #print(-self.d*(self.error-self.perror))
                     self.perror = self.error
@@ -237,7 +272,8 @@ class controller():
             current_x = self.coordinates[0]
             i=0
             while(self.coordinates[0]==current_x):
-                self.msg.angular.z = -self.p*self.error -self.d*(self.error-self.perror)
+                #self.msg.angular.z = -self.p*self.error -self.d*(self.error-self.perror)
+                self.PID(self.error)
                 if(i%skip==0):
                     #print(-self.d*(self.error-self.perror))
                     self.perror = self.error
@@ -265,7 +301,7 @@ class controller():
         self.now = rospy.Time.now().to_sec() 
         #self.angular_speed
 
-        while(rospy.Time.now().to_sec()-self.now < 0.7 ): # current_direction!="inbetween"
+        while(rospy.Time.now().to_sec()-self.now < 1.3 ): # current_direction!="inbetween"
             self.msg.angular.z = -self.angular_speed
             self.velocity_pub.publish(self.msg)
             current_direction = self.GetDirection()
@@ -765,7 +801,6 @@ class controller():
         while(flag == 1):
             print(self.GetDirection())
             #print("bounded")'''
-
         if (self.flood[self.xy[1]][self.xy[0]]!=0):
             self.floodFill(self.xy[0],self.xy[1],self.xprev,self.yprev)
         where_to_go = self.toMove(self.xy[0],self.xy[1],self.xprev,self.yprev,self.orient)   #self.where_to_go()
@@ -799,6 +834,8 @@ class controller():
             self.xy[0],self.xy[1] = self.updateCoordinates(self.xy[0],self.xy[1],self.orient)
             
             self.updateWalls(self.xy[0],self.xy[1],self.orient,self.WallLeft,self.WallRight,self.WallForward)     
+            if self.xy in self.final_cells:
+                rospy.spin()
             #rospy.spin()
         '''for i in range(maze_width):
             for j in range(maze_width):
