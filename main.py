@@ -16,9 +16,9 @@ class controller():
         rospy.init_node('controller_node',anonymous=True)
         self.msg=Twist()
         self.msg.linear.x = 0
-        self.msg.linear.y = 0 
+        self.msg.linear.y = 0
         self.msg.linear.z = 0
-        self.msg.angular.x = 0 
+        self.msg.angular.x = 0
         self.msg.angular.y = 0
         self.msg.angular.z = 0
         self.flag = 0
@@ -70,8 +70,10 @@ class controller():
         
 
         
-        # Other variables
-        self.half_maze_width = self.maze_width / 2
+        # Other variables (Memory of the Mouse)
+        self.one_cell_width = self.maze_width/16
+        self.half_cell_width = self.one_cell_width/2
+        self.half_maze_width = self.maze_width/2
         self.leftwall_distance = 0
         self.rightwall_distance = 0
         self.forwardwall_distance = 0
@@ -90,7 +92,7 @@ class controller():
         self.p = 1.0 # last commit 7  # 2.7
         self.d = 14 # last commit 250 # 16
         self.max = 0.5
-        self.kp = 1.5
+        self.kp = 1.2
 
         # Publishers here
         self.velocity_pub = rospy.Publisher("cmd_vel",Twist,queue_size=10)
@@ -122,21 +124,23 @@ class controller():
     #-----------------------------------------------------
     def odom_callback(self,msg):
         self.odom = msg
-        self.coordinates[0] = int((self.odom.pose.pose.position.x + self.half_maze_width + 0.090375 )/(0.18075)) - 1 # orientation 0.08 0.005
-        self.coordinates[1] = (int((-self.odom.pose.pose.position.y + self.half_maze_width  +0.090375)/(0.18075)) - 1)
+        
+        # These are temporary coordinates ( not represent real one )
+        self.coordinates[0] = int((self.odom.pose.pose.position.x + self.half_maze_width + self.half_cell_width )/(self.one_cell_width)) - 1 # orientation 0.08 0.005
+        self.coordinates[1] = (int((-self.odom.pose.pose.position.y + self.half_maze_width  +self.half_cell_width)/(self.one_cell_width)) - 1)
         #print("real x is ",self.coordinates[0]),
         #print("real y is ",self.coordinates[1])
         if self.orient == 0:
-            self.error = self.odom.pose.pose.position.x + ((self.xy[0]-7)*(0.18075) - 0.090375)
+            self.error = self.odom.pose.pose.position.x + ((self.xy[0]-7)*(self.one_cell_width) - self.half_cell_width)
             #print("error is",self.error)
         elif self.orient == 2:
-            self.error = -(self.odom.pose.pose.position.x + ((self.xy[0]-7)*(0.18075) - 0.090375))
+            self.error = -(self.odom.pose.pose.position.x + ((self.xy[0]-7)*(self.one_cell_width) - self.half_cell_width))
             #print("error is",self.error)
         elif self.orient == 3:
-            self.error = self.odom.pose.pose.position.y - ((8-self.xy[1])*(0.18075) - 0.090375)
+            self.error = self.odom.pose.pose.position.y - ((8-self.xy[1])*(self.one_cell_width) - self.half_cell_width)
             #print("error is",self.error)
         elif self.orient == 1:
-            self.error = -(self.odom.pose.pose.position.y - ((8-self.xy[1])*(0.18075) - 0.090375))
+            self.error = -(self.odom.pose.pose.position.y - ((8-self.xy[1])*(self.one_cell_width) - self.half_cell_width))
             #print("error is",self.error)
     
         if(self.coordinates[0] == -1):
@@ -188,7 +192,7 @@ class controller():
                 orient=0
             elif (orient==3):
                 orient=1
-
+        
         return(orient)
     
     #-----------------------------------------------------
@@ -349,9 +353,7 @@ class controller():
         self.flag = 1
 
     #-----------------------------------------------------
-    def isAccessible(self,x,y,x1,y1):
-        '''returns True if mouse can move to x1,y1 from x,y (two adjacent cells)
-        '''
+    def isReachable(self,x,y,x1,y1):
         if (x==x1):
             if(y>y1):
                 if(self.cells[y][x]==4 or self.cells[y][x]==5 or self.cells[y][x]==6 or self.cells[y][x]==10 or self.cells[y][x]==11 or self.cells[y][x]==12 or self.cells[y][x]==14 ):
@@ -375,6 +377,7 @@ class controller():
                     return (False)
                 else:
                     return (True) 
+
     #-----------------------------------------------------
     def neighborCoordinates(self,x,y):
         x3= x-1
@@ -392,22 +395,22 @@ class controller():
         return (x0,y0,x1,y1,x2,y2,x3,y3) 
 
     #----------------------------------------------------- 
-    def isConsistant(self,x,y):
+    def accoradantOrNot(self,x,y):
         x0,y0,x1,y1,x2,y2,x3,y3 = self.neighborCoordinates(x,y)
         val= self.flood[y][x]
         minimums=[-1,-1,-1,-1]
 
         if (x0>=0 and y0>=0):
-            if (self.isAccessible(x,y,x0,y0)):
+            if (self.isReachable(x,y,x0,y0)):
                 minimums[0]=self.flood[y0][x0]
         if (x1>=0 and y1>=0):
-            if (self.isAccessible(x,y,x1,y1)):
+            if (self.isReachable(x,y,x1,y1)):
                 minimums[1]=self.flood[y1][x1]
         if (x2>=0 and y2>=0):
-            if (self.isAccessible(x,y,x2,y2)):
+            if (self.isReachable(x,y,x2,y2)):
                 minimums[2]=self.flood[y2][x2]
         if (x3>=0 and y3>=0):
-            if (self.isAccessible(x,y,x3,y3)):
+            if (self.isReachable(x,y,x3,y3)):
                 minimums[3]=self.flood[y3][x3]
 
         minCount=0
@@ -428,36 +431,28 @@ class controller():
             return (True)
         else:
             return (False)
+
     #-----------------------------------------------------
-    def makeConsistant(self,x,y):
+    def fixCell(self,x,y):
         x0,y0,x1,y1,x2,y2,x3,y3 = self.neighborCoordinates(x,y)
 
         val= self.flood[y][x]
         minimums=[-1,-1,-1,-1]
         if (x0>=0 and y0>=0):
-            if (self.isAccessible(x,y,x0,y0)):
+            if (self.isReachable(x,y,x0,y0)):
                 minimums[0]=self.flood[y0][x0]
-                #if (flood[y0][x0]<minVal):
-                #minimums.append(flood[y0][x0])
-                    #minVal= flood[y0][x0]
+
         if (x1>=0 and y1>=0):
-            if (self.isAccessible(x,y,x1,y1)):
+            if (self.isReachable(x,y,x1,y1)):
                 minimums[1]=self.flood[y1][x1]
-                #if (flood[y1][x1]<minVal):
-                #minimums.append(flood[y1][x1])
-                    #minVal= flood[y1][x1]
+
         if (x2>=0 and y2>=0):
-            if (self.isAccessible(x,y,x2,y2)):
+            if (self.isReachable(x,y,x2,y2)):
                 minimums[2]=self.flood[y2][x2]
-                #if (flood[y2][x2]<minVal):
-                #minimums.append(flood[y1][x1])
-                    #minVal= flood[y2][x2]
+
         if (x3>=0 and y3>=0):
-            if (self.isAccessible(x,y,x3,y3)):
+            if (self.isReachable(x,y,x3,y3)):
                 minimums[3]=self.flood[y3][x3]
-                #if (flood[y3][x3]<minVal):
-                #minimums.append(flood[y1][x1])
-                    #minVal= flood[y3][x3]
 
         for i in range(4):
             if minimums[i]== -1:
@@ -466,17 +461,18 @@ class controller():
         minVal= min(minimums)
         # Danger !!!!!
         self.flood[y][x]= minVal+1   
+
     #-----------------------------------------------------
     def isCentre(self,x,y):
         if((x==7 and y==8) or(x==7 and y == 7) or (x==8 and y==7) or(x==8 and y==8) ):
             return True
         else:
             return False
+
     #-----------------------------------------------------
-        
     def floodFill(self,x,y,xprev,yprev):
         # flood fill algorithm
-        if not self.isConsistant(x,y):
+        if not self.accoradantOrNot(x,y):
             self.flood[y][x]= self.flood[yprev][xprev]+1
 
         stack=[]
@@ -484,19 +480,19 @@ class controller():
         stack.append(y)
         x0,y0,x1,y1,x2,y2,x3,y3= self.neighborCoordinates(x,y)
         if(x0>=0 and y0>=0):
-            if (self.isAccessible(x,y,x0,y0)):
+            if (self.isReachable(x,y,x0,y0)):
                 stack.append(x0)
                 stack.append(y0)
         if(x1>=0 and y1>=0):
-            if (self.isAccessible(x,y,x1,y1)):
+            if (self.isReachable(x,y,x1,y1)):
                 stack.append(x1)
                 stack.append(y1)
         if(x2>=0 and y2>=0):
-            if (self.isAccessible(x,y,x2,y2)):
+            if (self.isReachable(x,y,x2,y2)):
                 stack.append(x2)
                 stack.append(y2)
         if(x3>=0 and y3>=0):
-            if (self.isAccessible(x,y,x3,y3)):
+            if (self.isReachable(x,y,x3,y3)):
                 stack.append(x3)
                 stack.append(y3)
 
@@ -504,33 +500,33 @@ class controller():
             yrun= stack.pop()
             xrun= stack.pop()
 
-            if self.isConsistant(xrun,yrun):
+            if self.accoradantOrNot(xrun,yrun):
                 pass
             else:
-                self.makeConsistant(xrun,yrun)
+                self.fixCell(xrun,yrun)
                 stack.append(xrun)
                 stack.append(yrun)
                 x0,y0,x1,y1,x2,y2,x3,y3= self.neighborCoordinates(xrun,yrun)
                 if(x0>=0 and y0>=0):
-                    if (self.isAccessible(xrun,yrun,x0,y0)):
+                    if (self.isReachable(xrun,yrun,x0,y0)):
                         stack.append(x0)
                         stack.append(y0)
                 if(x1>=0 and y1>=0):
-                    if (self.isAccessible(xrun,yrun,x1,y1)):
+                    if (self.isReachable(xrun,yrun,x1,y1)):
                         stack.append(x1)
                         stack.append(y1)
                 if(x2>=0 and y2>=0):
-                    if (self.isAccessible(xrun,yrun,x2,y2)):
+                    if (self.isReachable(xrun,yrun,x2,y2)):
                         stack.append(x2)
                         stack.append(y2)
                 if(x3>=0 and y3>=0):
-                    if (self.isAccessible(xrun,yrun,x3,y3)):
+                    if (self.isReachable(xrun,yrun,x3,y3)):
                         stack.append(x3)
                         stack.append(y3)
             #break
 
     #-----------------------------------------------------
-    def updateCellArray(self,x,y,orient,L,R,F):
+    def updateCellArray(self,x,y,orient,L,F,R):
         if(L and R and F):
             if (orient==0):
                 self.cells[y][x]= 13
@@ -750,22 +746,22 @@ class controller():
         prev=0
         minimums=[1000,1000,1000,1000]
 
-        if (self.isAccessible(x,y,x0,y0)):
+        if (self.isReachable(x,y,x0,y0)):
             if (x0==xprev and y0==yprev):
                 prev=0
             minimums[0]= self.flood[y0][x0]
 
-        if (self.isAccessible(x,y,x1,y1)):
+        if (self.isReachable(x,y,x1,y1)):
             if (x1==xprev and y1==yprev):
                 prev=1
             minimums[1]= self.flood[y1][x1]
 
-        if (self.isAccessible(x,y,x2,y2)):
+        if (self.isReachable(x,y,x2,y2)):
             if (x2==xprev and y2==yprev):
                 prev=2
             minimums[2]= self.flood[y2][x2]
 
-        if (self.isAccessible(x,y,x3,y3)):
+        if (self.isReachable(x,y,x3,y3)):
             if (x3==xprev and y3==yprev):
                 prev=3
             minimums[3]= self.flood[y3][x3]
@@ -800,19 +796,19 @@ class controller():
 
     #------------------------------------------------------------------  
     def updatePos(self):
-
         if (self.orient==0):
             self.xy[1]+=1
-        if (self.orient==1):
+        elif (self.orient==1):
             self.xy[0]+=1
-        if (self.orient==2):
+        elif (self.orient==2):
             self.xy[1]-=1
-        if (self.orient==3):
+        elif (self.orient==3):
             self.xy[0]-=1
 
     #-----------------------------------------------------------------          
     def run(self):
         #print(self.GetDirection())
+        # Just for debugging purpose to stop the bot at first 
         '''flag  = 0
         while(flag == 0):
             self.GoLeft()
@@ -826,7 +822,6 @@ class controller():
         print(where_to_go)
         #print(self.xy[0],self.xy[1])
         
-            
         if(where_to_go == "L"):
             self.GoLeft()
             self.orient = self.orientation(self.orient,"L")
@@ -838,20 +833,21 @@ class controller():
             self.GoLeft()
             self.orient = self.orientation(self.orient,"B")
     
-        if(True): #where_to_go == "F"
-            self.GoForward()
-            self.xprev = self.xy[0]
-            self.yprev = self.xy[1]
-            
-            # update position of the bot after a forward is done
-            self.updatePos()
-            
-            # update cell array with wall configuration
-            self.updateCellArray(self.xy[0],self.xy[1],self.orient,self.WallLeft,self.WallRight,self.WallForward)  
+        self.GoForward()
+        self.xprev = self.xy[0]
+        self.yprev = self.xy[1]
+        
+        # update position of the bot after a forward is done
+        self.updatePos()
+        
+        # update cell array with wall configuration
+        self.updateCellArray(self.xy[0],self.xy[1],self.orient,self.WallLeft,self.WallForward,self.WallRight)  
 
-            # if we are in the middle coordinates than stop there   
-            if self.xy in self.final_cells:
-                rospy.spin()
+        # if we are in the middle coordinates than stop there   
+        if self.xy in self.final_cells:
+            rospy.spin()
+        
+        # Printing the flood array just for debugging purpose
         '''for i in range(maze_width):
             for j in range(maze_width):
                 print(str(self.flood[i][j]) + " "),
@@ -865,7 +861,7 @@ if __name__ == '__main__':
     bot = controller()
     # wait so that time module initializes properly
     rospy.sleep(5)
-    r = rospy.Rate(25)
+    r = rospy.Rate(60)
     while not rospy.is_shutdown():
         bot.run()
         r.sleep()
