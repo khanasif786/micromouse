@@ -262,6 +262,18 @@ class controller():
     
     #-----------------------------------------------------
     def GoForward(self):
+        if self.orient == 0:
+            self.error = self.odom.pose.pose.position.x + ((self.xy[0]-7)*(self.one_cell_width) - self.half_cell_width)
+            #print("error is",self.error)
+        elif self.orient == 2:
+            self.error = -(self.odom.pose.pose.position.x + ((self.xy[0]-7)*(self.one_cell_width) - self.half_cell_width))
+            #print("error is",self.error)
+        elif self.orient == 3:
+            self.error = self.odom.pose.pose.position.y - ((8-self.xy[1])*(self.one_cell_width) - self.half_cell_width)
+            #print("error is",self.error)
+        elif self.orient == 1:
+            self.error = -(self.odom.pose.pose.position.y - ((8-self.xy[1])*(self.one_cell_width) - self.half_cell_width))
+            #print("error is",self.error)
         self.msg.linear.x = self.linear_speed
         self.msg.linear.y = 0
         self.msg.linear.z = 0
