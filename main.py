@@ -1,14 +1,7 @@
 # Micromouse main script
 # Sanket Sharma , Asif Khan
-import os
-import API
-import floodFill
 import rospy
 from geometry_msgs.msg import Twist
-import time # Topic cmd_vel
-from std_msgs.msg import String
-from std_msgs.msg import Float32
-from std_msgs.msg import Int32
 # from geometry_msgs.msg import PoseWithCovariance
 from sensor_msgs.msg import LaserScan
 import tf
@@ -29,6 +22,7 @@ class controller():
         self.msg.angular.y = 0
         self.msg.angular.z = 0
         self.flag = 0
+        # This contains configuration of walls
         self.cells = [[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
                       [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
                       [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
@@ -63,24 +57,34 @@ class controller():
                      [13,12,11,10,9,8,7,6,6,7,8,9,10,11,12,13],
                      [14,13,12,11,10,9,8,7,7,8,9,10,11,12,13,14]]
 
-        #required variables:
-        self.final_cells = [[7,7],[7,8],[8,7],[8,8]]
+        # Required variables:
+        # These variables can be changed according to the needs 
+        self.final_cells = [[7,7],[7,8],[8,7],[8,8]] # final cell position
+        self.direction = "north"  #initial direction
         self.angular_speed = 0.14 # change this to change linear speed
         self.linear_speed = 0.39 # change this to change angular speed
+        self.orient = 0 # North -> 0 ; South -> 2 ; East -> 1 ; West -> 3 // Initial orientation
+        self.xy = [15,0] # initial position in the maze 
+        self.maze_width = 2.892 # given on the portal .. https://techfest.org/2021/competitons/Micromouse.pdf
+        self.maze_size = 16 # 16x16 maze
+        
+
+        
+        # Other variables
+        self.half_maze_width = self.maze_width / 2
         self.leftwall_distance = 0
         self.rightwall_distance = 0
         self.forwardwall_distance = 0
         self.odom = Odometry()
-        self.coordinates = [0,0] # first x then y
+        self.coordinates = [0,0] # first x then y ( Temporary coordinates)
         self.angle =  0
-        self.direction = "north"
-        self.orient = 0 # North 
-        self.xy = [15,0]
         self.WallLeft = True
         self.WallRight = True
         self.WallForward = False
         self.xprev=0
         self.yprev=0
+
+        # Specific variables for PD controller
         self.error = 0
         self.perror = 0.01
         self.p = 1.0 # last commit 7  # 2.7
@@ -90,11 +94,12 @@ class controller():
 
         # Publishers here
         self.velocity_pub = rospy.Publisher("cmd_vel",Twist,queue_size=10)
-        #Subscribefrs here
+        # Subscriptions here
         rospy.Subscriber("/my_mm_robot/laser/scan",LaserScan,self.laser_callback)
         rospy.Subscriber("/odom",Odometry,self.odom_callback)
-
-    #   callback functions  
+    
+    # FUNCTIONS::
+    #-----------------------------------------------------  
     def laser_callback(self,msg):
         #self.laser = msg
         self.leftwall_distance = msg.ranges[359]
@@ -113,13 +118,12 @@ class controller():
         else:
             self.WallForward = False
 
-        
-        #print(self.leftwall_distance,self.rightwall_distance,self.forwardwall_distance)
     
+    #-----------------------------------------------------
     def odom_callback(self,msg):
         self.odom = msg
-        self.coordinates[0] = int((self.odom.pose.pose.position.x + 1.446 + 0.090375 )/(0.18075)) - 1 # orientation 0.08 0.005
-        self.coordinates[1] = (int((-self.odom.pose.pose.position.y + 1.446  +0.090375)/(0.18075)) - 1)
+        self.coordinates[0] = int((self.odom.pose.pose.position.x + self.half_maze_width + 0.090375 )/(0.18075)) - 1 # orientation 0.08 0.005
+        self.coordinates[1] = (int((-self.odom.pose.pose.position.y + self.half_maze_width  +0.090375)/(0.18075)) - 1)
         #print("real x is ",self.coordinates[0]),
         #print("real y is ",self.coordinates[1])
         if self.orient == 0:
@@ -149,6 +153,7 @@ class controller():
         # pass
         #print(self.angle)
     
+    #-----------------------------------------------------
     def GetDirection(self): #0.03 error was working first
         current_angle = self.angle
         if(abs(1.57-current_angle)<0.03):
@@ -163,7 +168,31 @@ class controller():
             return str("south")
         else:
             return str("inbetween")
+    
+    #-----------------------------------------------------
+    def orientation(self,orient,turning):
+        if (turning== 'L'):
+            orient-=1
+            if (orient==-1):
+                orient=3
+        elif(turning== 'R'):
+            orient+=1
+            if (orient==4):
+                orient=0
+        elif(turning== 'B'):
+            if (orient==0):
+                orient=2
+            elif (orient==1):
+                orient=3
+            elif (orient==2):
+                orient=0
+            elif (orient==3):
+                orient=1
 
+        return(orient)
+    
+    #-----------------------------------------------------
+    # This is actually a simple P controller. 
     def PID(self,error):
         if(self.orient == 0):
             angle_setpoint = (error/0.08)*0.8
@@ -200,10 +229,8 @@ class controller():
             angle_error = angle_having - angle_setpoint
             #print(angle_error)
             self.msg.angular.z = self.kp*angle_error
-
-
-    # Transitions Functions 
-    # Left
+ 
+    #-----------------------------------------------------
     def GoLeft(self):
         self.msg.linear.x = 0
         self.msg.linear.y = 0
@@ -228,7 +255,8 @@ class controller():
         self.velocity_pub.publish(self.msg)
 
         self.flag = 1
-
+    
+    #-----------------------------------------------------
     def GoForward(self):
         self.msg.linear.x = self.linear_speed
         self.msg.linear.y = 0
@@ -279,7 +307,8 @@ class controller():
                     self.perror = self.error
                 self.velocity_pub.publish(self.msg)
                 i = i + 1
-        # stopping
+
+        # Stopping
         self.perror = 0
         self.error = 0
         self.msg.angular.z = 0
@@ -290,7 +319,8 @@ class controller():
 
 
         self.flag = 1
- 
+    
+    #-----------------------------------------------------
     def GoRight(self):
         self.msg.linear.x = 0
         self.msg.linear.y = 0
@@ -346,9 +376,7 @@ class controller():
                 else:
                     return (True) 
     #-----------------------------------------------------
-    def getSurrounds(self,x,y):
-        ''' returns x1,y1,x2,y2,x3,y3,x4,y4 the four surrounding square
-        '''
+    def neighborCoordinates(self,x,y):
         x3= x-1
         y3=y
         x0=x
@@ -361,40 +389,38 @@ class controller():
             x1=-1
         if(y0>=16):
             y0=-1
-        return (x0,y0,x1,y1,x2,y2,x3,y3)  #order of cells- north,east,south,west
+        return (x0,y0,x1,y1,x2,y2,x3,y3) 
+
     #----------------------------------------------------- 
     def isConsistant(self,x,y):
-        '''returns True if the value of current square is one
-        greater than the minimum value in an accessible neighbor
-        '''
-        x0,y0,x1,y1,x2,y2,x3,y3 = self.getSurrounds(x,y)
+        x0,y0,x1,y1,x2,y2,x3,y3 = self.neighborCoordinates(x,y)
         val= self.flood[y][x]
-        minVals=[-1,-1,-1,-1]
+        minimums=[-1,-1,-1,-1]
 
         if (x0>=0 and y0>=0):
             if (self.isAccessible(x,y,x0,y0)):
-                minVals[0]=self.flood[y0][x0]
+                minimums[0]=self.flood[y0][x0]
         if (x1>=0 and y1>=0):
             if (self.isAccessible(x,y,x1,y1)):
-                minVals[1]=self.flood[y1][x1]
+                minimums[1]=self.flood[y1][x1]
         if (x2>=0 and y2>=0):
             if (self.isAccessible(x,y,x2,y2)):
-                minVals[2]=self.flood[y2][x2]
+                minimums[2]=self.flood[y2][x2]
         if (x3>=0 and y3>=0):
             if (self.isAccessible(x,y,x3,y3)):
-                minVals[3]=self.flood[y3][x3]
+                minimums[3]=self.flood[y3][x3]
 
         minCount=0
         for i in range(4):
-            if minVals[i]== -1:
+            if minimums[i]== -1:
                 pass
-            elif minVals[i]== val+1 :
+            elif minimums[i]== val+1 :
                 pass
-            elif minVals[i]== val-1 :
+            elif minimums[i]== val-1 :
                 minCount+=1
                 pass
 
-        #minVal= min(minVals)
+        #minVal= min(minimums)
 
         #return(minVal)
         
@@ -404,40 +430,40 @@ class controller():
             return (False)
     #-----------------------------------------------------
     def makeConsistant(self,x,y):
-        x0,y0,x1,y1,x2,y2,x3,y3 = self.getSurrounds(x,y)
+        x0,y0,x1,y1,x2,y2,x3,y3 = self.neighborCoordinates(x,y)
 
         val= self.flood[y][x]
-        minVals=[-1,-1,-1,-1]
+        minimums=[-1,-1,-1,-1]
         if (x0>=0 and y0>=0):
             if (self.isAccessible(x,y,x0,y0)):
-                minVals[0]=self.flood[y0][x0]
+                minimums[0]=self.flood[y0][x0]
                 #if (flood[y0][x0]<minVal):
-                #minVals.append(flood[y0][x0])
+                #minimums.append(flood[y0][x0])
                     #minVal= flood[y0][x0]
         if (x1>=0 and y1>=0):
             if (self.isAccessible(x,y,x1,y1)):
-                minVals[1]=self.flood[y1][x1]
+                minimums[1]=self.flood[y1][x1]
                 #if (flood[y1][x1]<minVal):
-                #minVals.append(flood[y1][x1])
+                #minimums.append(flood[y1][x1])
                     #minVal= flood[y1][x1]
         if (x2>=0 and y2>=0):
             if (self.isAccessible(x,y,x2,y2)):
-                minVals[2]=self.flood[y2][x2]
+                minimums[2]=self.flood[y2][x2]
                 #if (flood[y2][x2]<minVal):
-                #minVals.append(flood[y1][x1])
+                #minimums.append(flood[y1][x1])
                     #minVal= flood[y2][x2]
         if (x3>=0 and y3>=0):
             if (self.isAccessible(x,y,x3,y3)):
-                minVals[3]=self.flood[y3][x3]
+                minimums[3]=self.flood[y3][x3]
                 #if (flood[y3][x3]<minVal):
-                #minVals.append(flood[y1][x1])
+                #minimums.append(flood[y1][x1])
                     #minVal= flood[y3][x3]
 
         for i in range(4):
-            if minVals[i]== -1:
-                minVals[i]= 1000
+            if minimums[i]== -1:
+                minimums[i]= 1000
 
-        minVal= min(minVals)
+        minVal= min(minimums)
         # Danger !!!!!
         self.flood[y][x]= minVal+1   
     #-----------------------------------------------------
@@ -449,15 +475,14 @@ class controller():
     #-----------------------------------------------------
         
     def floodFill(self,x,y,xprev,yprev):
-        '''updates the flood matrix such that every square is consistant (current cell is x,y)
-        '''
+        # flood fill algorithm
         if not self.isConsistant(x,y):
             self.flood[y][x]= self.flood[yprev][xprev]+1
 
         stack=[]
         stack.append(x)
         stack.append(y)
-        x0,y0,x1,y1,x2,y2,x3,y3= self.getSurrounds(x,y)
+        x0,y0,x1,y1,x2,y2,x3,y3= self.neighborCoordinates(x,y)
         if(x0>=0 and y0>=0):
             if (self.isAccessible(x,y,x0,y0)):
                 stack.append(x0)
@@ -485,7 +510,7 @@ class controller():
                 self.makeConsistant(xrun,yrun)
                 stack.append(xrun)
                 stack.append(yrun)
-                x0,y0,x1,y1,x2,y2,x3,y3= self.getSurrounds(xrun,yrun)
+                x0,y0,x1,y1,x2,y2,x3,y3= self.neighborCoordinates(xrun,yrun)
                 if(x0>=0 and y0>=0):
                     if (self.isAccessible(xrun,yrun,x0,y0)):
                         stack.append(x0)
@@ -505,7 +530,7 @@ class controller():
             #break
 
     #-----------------------------------------------------
-    def updateWalls(self,x,y,orient,L,R,F):
+    def updateCellArray(self,x,y,orient,L,R,F):
         if(L and R and F):
             if (orient==0):
                 self.cells[y][x]= 13
@@ -609,8 +634,8 @@ class controller():
 
 
     #---------------------------------------------------------------
-
-    def where_to_go(self):
+    
+    '''def where_to_go(self):
         global maze_width
         cost_f = 0
         cost_l = 0
@@ -715,59 +740,53 @@ class controller():
         elif(cost_b<=cost_f and cost_b<=cost_l and cost_b<=cost_r):
             return "B"
         else:
-            return "F"
+            return "F"'''
 
     #------------------------------------------------------------
-    def toMove(self,x,y,xprev,yprev,orient):
-        '''returns the direction to turn into L,F,R or B
-        '''
-        x0,y0,x1,y1,x2,y2,x3,y3 = self.getSurrounds(x,y)
-        val= self.flood[y][x]
+    def where_to_go(self,x,y,xprev,yprev,orient):
+
+        x0,y0,x1,y1,x2,y2,x3,y3 = self.neighborCoordinates(x,y)
+        
         prev=0
-        minVals=[1000,1000,1000,1000]
+        minimums=[1000,1000,1000,1000]
 
         if (self.isAccessible(x,y,x0,y0)):
             if (x0==xprev and y0==yprev):
                 prev=0
-            minVals[0]= self.flood[y0][x0]
+            minimums[0]= self.flood[y0][x0]
 
         if (self.isAccessible(x,y,x1,y1)):
             if (x1==xprev and y1==yprev):
                 prev=1
-            minVals[1]= self.flood[y1][x1]
+            minimums[1]= self.flood[y1][x1]
 
         if (self.isAccessible(x,y,x2,y2)):
             if (x2==xprev and y2==yprev):
                 prev=2
-            minVals[2]= self.flood[y2][x2]
+            minimums[2]= self.flood[y2][x2]
 
         if (self.isAccessible(x,y,x3,y3)):
             if (x3==xprev and y3==yprev):
                 prev=3
-            minVals[3]= self.flood[y3][x3]
+            minimums[3]= self.flood[y3][x3]
 
-        minVal=minVals[0]
+        minVal=minimums[0]
         minCell=0
         noMovements=0
-        for i in minVals:
+        for i in minimums:
             if (i!=1000):
                 noMovements+=1
 
-        '''for i in range(4):
-            if (minVals[i]<minVal):
-                minVal= minVals[i]
-                minCell= i'''
-
         for i in range(4):
-            if (minVals[i]<minVal):
+            if (minimums[i]<minVal):
                 if (noMovements==1):
-                    minVal= minVals[i]
+                    minVal= minimums[i]
                     minCell= i
                 else:
                     if(i==prev):
                         pass
                     else:
-                        minVal= minVals[i]
+                        minVal= minimums[i]
                         minCell= i
 
         if (minCell==orient):
@@ -777,20 +796,20 @@ class controller():
         elif ((minCell==orient+1) or (minCell== orient-3)):
             return('R')
         else:
-            return('B')  
+            return('B')
+
     #------------------------------------------------------------------  
-    def updateCoordinates(self,x,y,orient):
+    def updatePos(self):
 
-        if (orient==0):
-            y+=1
-        if (orient==1):
-            x+=1
-        if (orient==2):
-            y-=1
-        if (orient==3):
-            x-=1
+        if (self.orient==0):
+            self.xy[1]+=1
+        if (self.orient==1):
+            self.xy[0]+=1
+        if (self.orient==2):
+            self.xy[1]-=1
+        if (self.orient==3):
+            self.xy[0]-=1
 
-        return(x,y)
     #-----------------------------------------------------------------          
     def run(self):
         #print(self.GetDirection())
@@ -803,40 +822,36 @@ class controller():
             #print("bounded")'''
         if (self.flood[self.xy[1]][self.xy[0]]!=0):
             self.floodFill(self.xy[0],self.xy[1],self.xprev,self.yprev)
-        where_to_go = self.toMove(self.xy[0],self.xy[1],self.xprev,self.yprev,self.orient)   #self.where_to_go()
+        where_to_go = self.where_to_go(self.xy[0],self.xy[1],self.xprev,self.yprev,self.orient)   #self.where_to_go()
         print(where_to_go)
         #print(self.xy[0],self.xy[1])
         
             
         if(where_to_go == "L"):
             self.GoLeft()
-            self.orient = API.orientation(self.orient,"L")
+            self.orient = self.orientation(self.orient,"L")
         elif(where_to_go == "R"):
             self.GoRight()
-            self.orient = API.orientation(self.orient,"R")
+            self.orient = self.orientation(self.orient,"R")
         elif(where_to_go == "B"):
             self.GoLeft()
             self.GoLeft()
-            self.orient = API.orientation(self.orient,"B")
+            self.orient = self.orientation(self.orient,"B")
     
         if(True): #where_to_go == "F"
             self.GoForward()
             self.xprev = self.xy[0]
             self.yprev = self.xy[1]
-            '''if self.orient == 0:
-                self.xy = [self.xy[0],self.xy[1]+1]
-            elif self.orient == 3:
-                self.xy = [self.xy[0]+1,self.xy[1]]
-            elif self.orient == 2:
-                self.xy = [self.xy[0],self.xy[1]-1]
-            elif self.orient == 1:
-                self.xy = [self.xy[0]-1,self.xy[1]]'''
-            self.xy[0],self.xy[1] = self.updateCoordinates(self.xy[0],self.xy[1],self.orient)
             
-            self.updateWalls(self.xy[0],self.xy[1],self.orient,self.WallLeft,self.WallRight,self.WallForward)     
+            # update position of the bot after a forward is done
+            self.updatePos()
+            
+            # update cell array with wall configuration
+            self.updateCellArray(self.xy[0],self.xy[1],self.orient,self.WallLeft,self.WallRight,self.WallForward)  
+
+            # if we are in the middle coordinates than stop there   
             if self.xy in self.final_cells:
                 rospy.spin()
-            #rospy.spin()
         '''for i in range(maze_width):
             for j in range(maze_width):
                 print(str(self.flood[i][j]) + " "),
