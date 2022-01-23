@@ -12,6 +12,7 @@ ANGULAR_SPEED = 0.39
 LINEAR_SPEED = 0.39
 ANGLE_THRESHOLD = 0.1 # angle precision in radian
 TURNING_THRESHOLD = 1.4
+step = 1
 
 class controller():
     # constructor here
@@ -822,6 +823,14 @@ class controller():
             return "F"'''
 
     #------------------------------------------------------------
+    def isDestination(self,x,y):
+        if [x,y] in self.final_cells:
+            return True
+        else:
+            return False
+
+
+    #------------------------------------------------------------
     def where_to_go(self,x,y,xprev,yprev,orient):
 
         x0,y0,x1,y1,x2,y2,x3,y3 = self.neighborCoordinates(x,y)
@@ -833,21 +842,29 @@ class controller():
             if (x0==xprev and y0==yprev):
                 prev=0
             minimums[0]= self.flood[y0][x0]
+            if self.isDestination(x0,y0):
+                minimums[0] = 0
 
         if (self.isReachable(x,y,x1,y1)):
             if (x1==xprev and y1==yprev):
                 prev=1
             minimums[1]= self.flood[y1][x1]
+            if self.isDestination(x1,y1):
+                minimums[1]= 0
 
         if (self.isReachable(x,y,x2,y2)):
             if (x2==xprev and y2==yprev):
                 prev=2
             minimums[2]= self.flood[y2][x2]
+            if self.isDestination(x2,y2):
+                minimums[2]= 0
 
         if (self.isReachable(x,y,x3,y3)):
             if (x3==xprev and y3==yprev):
                 prev=3
             minimums[3]= self.flood[y3][x3]
+            if self.isDestination(x3,y3):
+                minimums[3]= 0
 
         minVal=minimums[0]
         minCell=0
@@ -887,9 +904,218 @@ class controller():
             self.xy[1]-=1
         elif (self.orient==3):
             self.xy[0]-=1
+    
+    #------------------------------------------------------------------
+    def toMoveBack(self,x,y,xprev,yprev,orient):
+        '''returns the direction to turn into L,F,R or B
+        '''
+        x0,y0,x1,y1,x2,y2,x3,y3 = self.neighborCoordinates(x,y)
+        val= self.flood[y][x]
+        prev=0
+        minVals=[1000,1000,1000,1000]
+
+        if (self.isReachable(x,y,x0,y0)):
+            if (x0==xprev and y0==yprev):
+                prev=0
+            minVals[0]= self.flood[y0][x0]
+
+        if (self.isReachable(x,y,x1,y1)):
+            if (x1==xprev and y1==yprev):
+                prev=1
+            minVals[1]= self.flood[y1][x1]
+
+        if (self.isReachable(x,y,x2,y2)):
+            if (x2==xprev and y2==yprev):
+                prev=2
+            minVals[2]= self.flood[y2][x2]
+
+        if (self.isReachable(x,y,x3,y3)):
+            if (x3==xprev and y3==yprev):
+                prev=3
+            minVals[3]= self.flood[y3][x3]
+
+        maxVal=minVals[0]
+        minCell=0
+        noMovements=0
+        for i in minVals:
+            if (i!=1000):
+                noMovements+=1
+
+        for i in range(4):
+            if (minVals[i]!=1000 and minVals[i]> maxVal):
+                if (noMovements==1):
+                    minVal= minVals[i]
+                    minCell= i
+
+                else:
+                    if(i==prev):
+                        pass
+                    else:
+                        minVal= minVals[i]
+                        minCell= i
+
+        #return(minCell)
+        if (minCell==orient):
+            return ('F')
+        elif((minCell==orient-1) or (minCell== orient+3)):
+            return('L')
+        elif ((minCell==orient+1) or (minCell== orient-3)):
+            return('R')
+        else:
+            return('B')
+    
+    #----------------------------------------------------------------
+    def showFlood(self):
+        for i in range(MAZE_SIZE):
+            for j in range(MAZE_SIZE):
+                j = 15 - j
+                if self.xy[0] == j and self.xy[1] == i:
+                    if self.flood[i][j] < 10 :
+                        print("%#" + " "),
+                    else:
+                        print("%#" + " "),
+                else:
+                    if self.flood[i][j] < 10 :
+                        print("0" + str(self.flood[i][j]) + " "),
+                    else:
+                        print(str(self.flood[i][j]) + " "),                        
+            print("\n")
+
+    #----------------------------------------------------------------
+    def changeDestination(self,destinationx, destinationy):
+        for j in range(16):
+            for i in range(16):
+                self.flood[i][j]=255
+
+        queue=[]
+        self.flood[destinationy][destinationx]=0
+
+        queue.append(destinationy)
+        queue.append(destinationx)
+
+        
+        while (len(queue)!=0):
+            yrun=queue.pop(0)
+            xrun=queue.pop(0)
+
+            x0,y0,x1,y1,x2,y2,x3,y3= self.neighborCoordinates(xrun,yrun)
+            if(x0>=0 and y0>=0 ):
+                if (self.flood[y0][x0]==255):
+                    self.flood[y0][x0]=self.flood[yrun][xrun]+1
+                    queue.append(y0)
+                    queue.append(x0)
+            if(x1>=0 and y1>=0 ):
+                if (self.flood[y1][x1]==255):
+                    self.flood[y1][x1]=self.flood[yrun][xrun]+1
+                    queue.append(y1)
+                    queue.append(x1)
+            if(x2>=0 and y2>=0 ):
+                if (self.flood[y2][x2]==255):
+                    self.flood[y2][x2]=self.flood[yrun][xrun]+1
+                    queue.append(y2)
+                    queue.append(x2)
+            if(x3>=0 and y3>=0 ):
+                if (self.flood[y3][x3]==255):
+                    self.flood[y3][x3]=self.flood[yrun][xrun]+1
+                    queue.append(y3)
+                    queue.append(x3)
+    #-----------------------------------------------------------------
+    def floodFill3(self):
+        queue = []
+        for i in range(16):
+            for j in range(16):
+                self.flood[i][j]=255
+
+        self.flood[7][7]=0
+        self.flood[8][7]=0
+        self.flood[7][8]=0
+        self.flood[8][8]=0
+
+        queue.append(7)
+        queue.append(7)
+        queue.append(8)
+        queue.append(7)
+        queue.append(7)
+        queue.append(8)
+        queue.append(8)
+        queue.append(8)
+
+        while (len(queue)!=0):
+            yrun=queue.pop(0)
+            xrun=queue.pop(0)
+
+            x0,y0,x1,y1,x2,y2,x3,y3= self.neighborCoordinates(xrun,yrun)
+            if(x0>=0 and y0>=0 ):
+                if (self.flood[y0][x0]==255):
+                    if (self.isReachable(xrun,yrun,x0,y0)):
+                        self.flood[y0][x0]=self.flood[yrun][xrun]+1
+                        queue.append(y0)
+                        queue.append(x0)
+            if(x1>=0 and y1>=0):
+                if (self.flood[y1][x1]==255):
+                    if (self.isReachable(xrun,yrun,x1,y1)):
+                        self.flood[y1][x1]=self.flood[yrun][xrun]+1
+                        queue.append(y1)
+                        queue.append(x1)
+            if(x2>=0 and y2>=0 ):
+                if (self.flood[y2][x2]==255):
+                    if (self.isReachable(xrun,yrun,x2,y2)):
+                        self.flood[y2][x2]=self.flood[yrun][xrun]+1
+                        queue.append(y2)
+                        queue.append(x2)
+            if(x3>=0 and y3>=0 ):
+                if (self.flood[y3][x3]==255):
+                    if (self.isReachable(xrun,yrun,x3,y3)):
+                        self.flood[y3][x3]=self.flood[yrun][xrun]+1
+                        queue.append(y3)
+                        queue.append(x3)
+    #-----------------------------------------------------------------
+    def floodFill2(self):
+        for j in range(16):
+            for i in range(16):
+                self.flood[i][j]=255
+
+        queue=[]
+        self.flood[0][15]=0
+
+        queue.append(0)
+        queue.append(15)
+
+        
+        while (len(queue)!=0):
+            yrun=queue.pop(0)
+            xrun=queue.pop(0)
+
+            x0,y0,x1,y1,x2,y2,x3,y3= self.neighborCoordinates(xrun,yrun)
+            if(x0>=0 and y0>=0 ): # and self.cells[y0][x0]!=0
+                if (self.flood[y0][x0]==255):
+                    if (self.isReachable(xrun,yrun,x0,y0)):
+                        self.flood[y0][x0]=self.flood[yrun][xrun]+1
+                        queue.append(y0)
+                        queue.append(x0)
+            if(x1>=0 and y1>=0 ):
+                if (self.flood[y1][x1]==255):
+                    if (self.isReachable(xrun,yrun,x1,y1)):
+                        self.flood[y1][x1]=self.flood[yrun][xrun]+1
+                        queue.append(y1)
+                        queue.append(x1)
+            if(x2>=0 and y2>=0):
+                if (self.flood[y2][x2]==255):
+                    if (self.isReachable(xrun,yrun,x2,y2)):
+                        self.flood[y2][x2]=self.flood[yrun][xrun]+1
+                        queue.append(y2)
+                        queue.append(x2)
+            if(x3>=0 and y3>=0 ):
+                if (self.flood[y3][x3]==255):
+                    if (self.isReachable(xrun,yrun,x3,y3)):
+                        self.flood[y3][x3]=self.flood[yrun][xrun]+1
+                        queue.append(y3)
+                        queue.append(x3)
 
     #-----------------------------------------------------------------          
     def run(self):
+        global step
+        #print(step)
         #print(self.GetDirection())
         # Just for debugging purpose to stop the bot at first 
         '''flag  = 0
@@ -899,11 +1125,39 @@ class controller():
         while(flag == 1):
             print(self.GetDirection())
             #print("bounded")'''
-        if (self.flood[self.xy[1]][self.xy[0]]!=0):
+        print(self.xy)
+        self.updateCellArray(self.xy[0],self.xy[1],self.orient,self.WallLeft,self.WallForward,self.WallRight)
+        #self.showFlood()
+        #print(self.xy)
+
+        if (not (self.xy in self.final_cells)): #not (self.xy in self.final_cells)
             self.floodFill(self.xy[0],self.xy[1],self.xprev,self.yprev)
+        # Printing the flood array just for debugging purpose
+            #self.showFlood()
+        else:
+            if step == 1:
+                #self.changeDestination(15,0)
+                self.floodFill2()
+                #self.showFlood()
+                self.final_cells = [[15,0],[15,0],[15,0],[15,0]]
+                step = 2
+                
+            elif step == 2: 
+                self.floodFill3()   
+                #self.showFlood()
+                self.final_cells = [[7,7],[7,8],[8,7],[8,8]]
+                step = 3
+            elif step == 3:
+                print("DONE!!!")
+                rospy.sleep(1000) # just to stop wherever we are 
+
+
+            #self.showFlood()
+            #rospy.sleep(8)
+            self.floodFill(self.xy[0],self.xy[1],self.xprev,self.yprev)
+
         where_to_go = self.where_to_go(self.xy[0],self.xy[1],self.xprev,self.yprev,self.orient)   #self.where_to_go()
-        print(where_to_go)
-        #print(self.xy[0],self.xy[1])
+
         
         if(where_to_go == "L"):
             self.GoLeft()
@@ -927,21 +1181,17 @@ class controller():
         self.updatePos()
         
         # update cell array with wall configuration
-        self.updateCellArray(self.xy[0],self.xy[1],self.orient,self.WallLeft,self.WallForward,self.WallRight)  
+        #self.updateCellArray(self.xy[0],self.xy[1],self.orient,self.WallLeft,self.WallForward,self.WallRight)  
 
         # if we are in the middle coordinates than stop there   
-        if self.xy in self.final_cells:
+        '''if self.xy in self.final_cells:
             for i in range(MAZE_SIZE):
                 for j in range(MAZE_SIZE):
                     print(str(self.flood[i][j]) + " "),
             print("\n")
-            rospy.spin()
+            rospy.spin()'''
         
-        # Printing the flood array just for debugging purpose
-        '''for i in range(maze_width):
-            for j in range(maze_width):
-                print(str(self.flood[i][j]) + " "),
-            print("\n")'''
+
         #rospy.sleep(0.025)
         #os.system('clear')
 
