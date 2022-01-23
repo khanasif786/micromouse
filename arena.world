@@ -50,6 +50,7 @@
         <enable_wind>0</enable_wind>
         <kinematic>0</kinematic>
       </link>
+      <static>true</static>
     </model>
     <light name='sun' type='directional'>
       <cast_shadows>1</cast_shadows>
@@ -98,7 +99,7 @@
       <link name='base'>
         <pose frame=''>0 0 0 0 -0 0</pose>
         <inertial>
-          <mass>1</mass>
+          <mass>0.1</mass>
           <inertia>
             <ixx>1.39394</ixx>
             <ixy>0</ixy>
@@ -13131,6 +13132,7 @@
           <acceleration>0 0 0 0 -0 0</acceleration>
           <wrench>0 0 0 0 -0 0</wrench>
         </link>
+        <static>true</static>
       </model>
       <model name='my_maze'>
         <pose frame=''>0.000216 -0.000107 0 0 -0 4e-06</pose>
@@ -13141,6 +13143,8 @@
           <acceleration>0 0 0 0 -0 0</acceleration>
           <wrench>0 0 0 0 -0 0</wrench>
         </link>
+        <static>true</static>
+        <static>true</static>
       </model>
       <light name='sun'>
         <pose frame=''>0 0 10 0 -0 0</pose>
