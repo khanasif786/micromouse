@@ -27,6 +27,10 @@ class controller():
         self.msg.angular.y = 0
         self.msg.angular.z = 0
         self.flag = 0
+        # self.cells  = file.read
+        # self.flood = file.read
+        # self.check = file.read()
+         # if self.check == 0:
         # This contains configuration of walls
         self.cells = [[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
                       [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
@@ -69,7 +73,7 @@ class controller():
         self.angular_speed = ANGULAR_SPEED #0.14 # change this to change linear speed
         self.linear_speed = LINEAR_SPEED # change this to change angular speed
         self.orient = 0 # North -> 0 ; South -> 2 ; East -> 1 ; West -> 3 // Initial orientation
-        self.xy = [15,0] # initial position in the maze 
+        self.xy = [15,0] # initial position in the maze  
         self.maze_width = 2.892 # given on the portal .. https://techfest.org/2021/competitons/Micromouse.pdf
         self.angleThreshold = ANGLE_THRESHOLD
         
@@ -164,7 +168,7 @@ class controller():
         #print(self.angle)
     
     #-----------------------------------------------------
-    def GetDirection(self): #0.03 error was working first
+    def GetDirection(self): 
         current_angle = self.angle
         if(abs(1.57-current_angle)<ANGLE_THRESHOLD):
             return str("west")
@@ -679,7 +683,7 @@ class controller():
 
         else:
             self.cells[y][x]= 15
-
+        
         '''if self.leftwall_distance > 0.16 and self.leftwall_distance < 0.96:
             temp = int(self.leftwall_distance/0.18075)
             if (orient==0):
@@ -904,65 +908,6 @@ class controller():
             self.xy[1]-=1
         elif (self.orient==3):
             self.xy[0]-=1
-    
-    #------------------------------------------------------------------
-    def toMoveBack(self,x,y,xprev,yprev,orient):
-        '''returns the direction to turn into L,F,R or B
-        '''
-        x0,y0,x1,y1,x2,y2,x3,y3 = self.neighborCoordinates(x,y)
-        val= self.flood[y][x]
-        prev=0
-        minVals=[1000,1000,1000,1000]
-
-        if (self.isReachable(x,y,x0,y0)):
-            if (x0==xprev and y0==yprev):
-                prev=0
-            minVals[0]= self.flood[y0][x0]
-
-        if (self.isReachable(x,y,x1,y1)):
-            if (x1==xprev and y1==yprev):
-                prev=1
-            minVals[1]= self.flood[y1][x1]
-
-        if (self.isReachable(x,y,x2,y2)):
-            if (x2==xprev and y2==yprev):
-                prev=2
-            minVals[2]= self.flood[y2][x2]
-
-        if (self.isReachable(x,y,x3,y3)):
-            if (x3==xprev and y3==yprev):
-                prev=3
-            minVals[3]= self.flood[y3][x3]
-
-        maxVal=minVals[0]
-        minCell=0
-        noMovements=0
-        for i in minVals:
-            if (i!=1000):
-                noMovements+=1
-
-        for i in range(4):
-            if (minVals[i]!=1000 and minVals[i]> maxVal):
-                if (noMovements==1):
-                    minVal= minVals[i]
-                    minCell= i
-
-                else:
-                    if(i==prev):
-                        pass
-                    else:
-                        minVal= minVals[i]
-                        minCell= i
-
-        #return(minCell)
-        if (minCell==orient):
-            return ('F')
-        elif((minCell==orient-1) or (minCell== orient+3)):
-            return('L')
-        elif ((minCell==orient+1) or (minCell== orient-3)):
-            return('R')
-        else:
-            return('B')
     
     #----------------------------------------------------------------
     def showFlood(self):
