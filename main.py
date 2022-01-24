@@ -97,7 +97,7 @@ class controller():
         self.xprev=0
         self.yprev=0
 
-        # Specific variables for PD controller
+        # Specific variables for PD controller (Tuned values)
         self.error = 0
         self.perror = 0.01
         self.p = 1.0 # last commit 7  # 2.7
@@ -184,28 +184,6 @@ class controller():
             return str("south")
         else:
             return str("inbetween")
-    
-    #-----------------------------------------------------
-    def orientation(self,orient,turning):
-        if (turning== 'L'):
-            orient-=1
-            if (orient==-1):
-                orient=3
-        elif(turning== 'R'):
-            orient+=1
-            if (orient==4):
-                orient=0
-        elif(turning== 'B'):
-            if (orient==0):
-                orient=2
-            elif (orient==1):
-                orient=3
-            elif (orient==2):
-                orient=0
-            elif (orient==3):
-                orient=1
-        
-        return(orient)
     
     #-----------------------------------------------------
     # This is actually a simple PD controller. 
@@ -444,6 +422,7 @@ class controller():
 
     #-----------------------------------------------------
     def isReachable(self,x,y,x1,y1):
+        # Bitmasked values are used 
         if (x==x1):
             if(y>y1):
                 if(self.cells[y][x]==4 or self.cells[y][x]==12 or self.cells[y][x]==6 or self.cells[y][x]==5 or self.cells[y][x]==14 or self.cells[y][x]==7 or self.cells[y][x]==13 ):
@@ -657,6 +636,7 @@ class controller():
 
     #----------------------------------------------------
     def updateCellArraySimple(self,x,y,orient,L,F,R):
+        # updates only the current cell 
         if(L and R and F):
             if (orient==0):
                 self.cells[y][x]= 11|self.cells[y][x]
@@ -728,6 +708,7 @@ class controller():
 
     #-----------------------------------------------------
     def updateCellArray(self,x,y,orient,L,F,R):
+        # updates current cell with nearby cells
         if(L and R and F):
             if (orient==0):
                 self.cells[y][x]= 11
@@ -838,11 +819,6 @@ class controller():
                 y = forward[1]
                 if F:
                     self.cells[y][x] = 2|self.cells[y][x]
-
-
-                        
-                
-                
                 
         
         '''if self.leftwall_distance > 0.16 and self.leftwall_distance < 0.96:
@@ -1088,6 +1064,7 @@ class controller():
             print("\n")
     #-----------------------------------------------------------------
     def showCell(self):
+        # show cell array
         for i in range(MAZE_SIZE):
             for j in range(MAZE_SIZE):
                 j = 15 - j
@@ -1099,6 +1076,8 @@ class controller():
 
     #----------------------------------------------------------------
     def changeDestination(self,destinationx, destinationy):
+        # flood filling without using cell array
+        # it is just for debugging purposes
         for j in range(16):
             for i in range(16):
                 self.flood[i][j]=255
@@ -1137,6 +1116,7 @@ class controller():
                     queue.append(x3)
     #-----------------------------------------------------------------
     def floodFill3(self):
+        # Classic flood fill algorithm
         queue = []
         for i in range(16):
             for j in range(16):
@@ -1187,6 +1167,7 @@ class controller():
                         queue.append(x3)
     #-----------------------------------------------------------------
     def floodFill2(self):
+        # classic flood fill algorithm
         for j in range(16):
             for i in range(16):
                 self.flood[i][j]=255
@@ -1227,6 +1208,27 @@ class controller():
                         self.flood[y3][x3]=self.flood[yrun][xrun]+1
                         queue.append(y3)
                         queue.append(x3)
+
+    #-----------------------------------------------------
+    def orientation(self,orient,turning):
+        if (turning== 'L'):
+            orient-=1
+            if (orient==-1):
+                orient=3
+        elif(turning== 'R'):
+            orient+=1
+            if (orient==4):
+                orient=0
+        elif(turning== 'B'):
+            if (orient==0):
+                orient=2
+            elif (orient==1):
+                orient=3
+            elif (orient==2):
+                orient=0
+            elif (orient==3):
+                orient=1
+        return(orient)
 
     #-----------------------------------------------------------------          
     def run(self):
