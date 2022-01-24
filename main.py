@@ -13,6 +13,8 @@ LINEAR_SPEED = 0.39
 ANGLE_THRESHOLD = 0.1 # angle precision in radian
 TURNING_THRESHOLD = 1.4
 step = 1
+START_X = 15
+START_Y = 0
 
 class controller():
     # constructor here
@@ -73,7 +75,7 @@ class controller():
         self.angular_speed = ANGULAR_SPEED #0.14 # change this to change linear speed
         self.linear_speed = LINEAR_SPEED # change this to change angular speed
         self.orient = 0 # North -> 0 ; South -> 2 ; East -> 1 ; West -> 3 // Initial orientation
-        self.xy = [15,0] # initial position in the maze  
+        self.xy = [START_X,START_Y] # initial position in the maze  
         self.maze_width = 2.892 # given on the portal .. https://techfest.org/2021/competitons/Micromouse.pdf
         self.angleThreshold = ANGLE_THRESHOLD
         
@@ -444,24 +446,24 @@ class controller():
     def isReachable(self,x,y,x1,y1):
         if (x==x1):
             if(y>y1):
-                if(self.cells[y][x]==4 or self.cells[y][x]==5 or self.cells[y][x]==6 or self.cells[y][x]==10 or self.cells[y][x]==11 or self.cells[y][x]==12 or self.cells[y][x]==14 ):
+                if(self.cells[y][x]==4 or self.cells[y][x]==12 or self.cells[y][x]==6 or self.cells[y][x]==5 or self.cells[y][x]==14 or self.cells[y][x]==7 or self.cells[y][x]==13 ):
                     return (False)
                 else:
                     return(True)
             else:
-                if(self.cells[y][x]==2 or self.cells[y][x]==7 or self.cells[y][x]==8 or self.cells[y][x]==10 or self.cells[y][x]==12 or self.cells[y][x]==13 or self.cells[y][x]==14 ):
+                if(self.cells[y][x]==1 or self.cells[y][x]==3 or self.cells[y][x]==9 or self.cells[y][x]==5 or self.cells[y][x]==7 or self.cells[y][x]==11 or self.cells[y][x]==13 ):
                     return (False)
                 else:
                     return(True)
                 
         elif (y==y1):
             if(x>x1):
-                if(self.cells[y][x]==1 or self.cells[y][x]==5 or self.cells[y][x]==8 or self.cells[y][x]==9 or self.cells[y][x]==11 or self.cells[y][x]==13 or self.cells[y][x]==14 ):
+                if(self.cells[y][x]==8 or self.cells[y][x]==12 or self.cells[y][x]==9 or self.cells[y][x]==10 or self.cells[y][x]==14 or self.cells[y][x]==11 or self.cells[y][x]==13 ):
                     return (False)
                 else:
                     return (True)
             else:
-                if(self.cells[y][x]==3 or self.cells[y][x]==6 or self.cells[y][x]==7 or self.cells[y][x]==9 or self.cells[y][x]==11 or self.cells[y][x]==12 or self.cells[y][x]==13 ):
+                if(self.cells[y][x]==2 or self.cells[y][x]==6 or self.cells[y][x]==3 or self.cells[y][x]==10 or self.cells[y][x]==14 or self.cells[y][x]==7 or self.cells[y][x]==11 ):
                     return (False)
                 else:
                     return (True) 
@@ -612,77 +614,236 @@ class controller():
                         stack.append(x3)
                         stack.append(y3)
             #break
+    def neighborCells(self,x,y,orient):
+        if orient == 0:
+            forward = [x , y + 1]
+            backward = [x , y - 1]
+            leftward = [x - 1, y]
+            rightward = [x + 1, y]
+        elif orient == 2:
+            forward = [x , y - 1]
+            backward = [x , y + 1]
+            leftward = [x + 1, y]
+            rightward = [x - 1, y]      
+        elif orient == 1:
+            forward = [x + 1 , y ]
+            backward = [x - 1 , y]
+            leftward = [x , y + 1]
+            rightward = [x, y -1]
+        else:
+            forward = [x - 1 , y ]
+            backward = [x + 1 , y]
+            leftward = [x , y - 1]
+            rightward = [x, y + 1]
+
+        if forward[0] > 15:
+            forward[0] = -1
+        if forward[1] > 15:
+            forward[1] = -1
+        if rightward[0] > 15:
+            rightward[0] = -1
+        if rightward[1] > 15:
+            rightward[1] = -1  
+        if backward[0] > 15:
+            backward[0] = -1
+        if backward[1] > 15:
+            backward[1] = -1 
+        if leftward[0] > 15:
+            leftward[0] = -1
+        if leftward[1] > 15:
+            leftward[1] = -1     
+        return (forward, rightward, backward, leftward)
+    
+
+    #----------------------------------------------------
+    def updateCellArraySimple(self,x,y,orient,L,F,R):
+        if(L and R and F):
+            if (orient==0):
+                self.cells[y][x]= 11|self.cells[y][x]
+            elif (orient==1):
+                self.cells[y][x]= 7|self.cells[y][x]
+            elif (orient==2):
+                self.cells[y][x]= 14|self.cells[y][x]
+            elif (orient==3):
+                self.cells[y][x]= 13|self.cells[y][x]
+
+        elif (L and R and not F):
+            if (orient==0 or orient== 2):
+                self.cells[y][x]= 10|self.cells[y][x]
+            elif (orient==1 or orient==3):
+                self.cells[y][x]= 5|self.cells[y][x]
+
+        elif (L and F and not R):
+            if (orient==0):
+                self.cells[y][x]= 9|self.cells[y][x]
+            elif (orient==1):
+                self.cells[y][x]= 3|self.cells[y][x]
+            elif (orient==2):
+                self.cells[y][x]= 6|self.cells[y][x]
+            elif (orient==3):
+                self.cells[y][x]= 12|self.cells[y][x]
+
+        elif (R and F and not L):
+            if (orient==0):
+                self.cells[y][x]= 3|self.cells[y][x]
+            elif (orient==1):
+                self.cells[y][x]= 6|self.cells[y][x]
+            elif (orient==2):
+                self.cells[y][x]= 12|self.cells[y][x]
+            elif (orient==3):
+                self.cells[y][x]= 9|self.cells[y][x]
+
+        elif(F):
+            if (orient==0):
+                self.cells[y][x]= 1|self.cells[y][x]
+            elif (orient==1):
+                self.cells[y][x]= 2|self.cells[y][x]
+            elif (orient==2):
+                self.cells[y][x]= 4|self.cells[y][x]
+            elif (orient==3):
+                self.cells[y][x]= 8|self.cells[y][x]
+
+        elif(L):
+            if (orient==0):
+                self.cells[y][x]= 8|self.cells[y][x]
+            elif (orient==1):
+                self.cells[y][x]= 1|self.cells[y][x]
+            elif (orient==2):
+                self.cells[y][x]= 2|self.cells[y][x]
+            elif (orient==3):
+                self.cells[y][x]= 4|self.cells[y][x]
+
+        elif(R):
+            if (orient==0):
+                self.cells[y][x]= 2|self.cells[y][x]
+            elif (orient==1):
+                self.cells[y][x]= 4|self.cells[y][x]
+            elif (orient==2):
+                self.cells[y][x]= 8|self.cells[y][x]
+            elif (orient==3):
+                self.cells[y][x]= 1|self.cells[y][x]
+
+        else:
+            self.cells[y][x]= 0|self.cells[y][x]
 
     #-----------------------------------------------------
     def updateCellArray(self,x,y,orient,L,F,R):
         if(L and R and F):
             if (orient==0):
-                self.cells[y][x]= 13
-            elif (orient==1):
-                self.cells[y][x]= 12
-            elif (orient==2):
                 self.cells[y][x]= 11
-            elif (orient==3):
+            elif (orient==1):
+                self.cells[y][x]= 7
+            elif (orient==2):
                 self.cells[y][x]= 14
+            elif (orient==3):
+                self.cells[y][x]= 13
 
         elif (L and R and not F):
             if (orient==0 or orient== 2):
-                self.cells[y][x]= 9
-            elif (orient==1 or orient==3):
                 self.cells[y][x]= 10
+            elif (orient==1 or orient==3):
+                self.cells[y][x]= 5
 
         elif (L and F and not R):
             if (orient==0):
-                self.cells[y][x]= 8
+                self.cells[y][x]= 9
             elif (orient==1):
-                self.cells[y][x]= 7
+                self.cells[y][x]= 3
             elif (orient==2):
                 self.cells[y][x]= 6
             elif (orient==3):
-                self.cells[y][x]= 5
+                self.cells[y][x]= 12
 
         elif (R and F and not L):
             if (orient==0):
-                self.cells[y][x]= 7
+                self.cells[y][x]= 3
             elif (orient==1):
                 self.cells[y][x]= 6
             elif (orient==2):
-                self.cells[y][x]= 5
+                self.cells[y][x]= 12
             elif (orient==3):
-                self.cells[y][x]= 8
+                self.cells[y][x]= 9
 
         elif(F):
             if (orient==0):
-                self.cells[y][x]= 2
+                self.cells[y][x]= 1
             elif (orient==1):
-                self.cells[y][x]= 3
+                self.cells[y][x]= 2
             elif (orient==2):
                 self.cells[y][x]= 4
             elif (orient==3):
-                self.cells[y][x]= 1
+                self.cells[y][x]= 8
 
         elif(L):
             if (orient==0):
-                self.cells[y][x]= 1
+                self.cells[y][x]= 8
             elif (orient==1):
-                self.cells[y][x]= 2
+                self.cells[y][x]= 1
             elif (orient==2):
-                self.cells[y][x]= 3
+                self.cells[y][x]= 2
             elif (orient==3):
                 self.cells[y][x]= 4
 
         elif(R):
             if (orient==0):
-                self.cells[y][x]= 3
+                self.cells[y][x]= 2
             elif (orient==1):
                 self.cells[y][x]= 4
             elif (orient==2):
-                self.cells[y][x]= 1
+                self.cells[y][x]= 8
             elif (orient==3):
-                self.cells[y][x]= 2
+                self.cells[y][x]= 1
 
         else:
-            self.cells[y][x]= 15
+            self.cells[y][x]= 0
+
+        forward, rightward, backward, leftward = self.neighborCells(x,y,orient)
+        if rightward[0] >=0 and rightward[1]>=0:
+            x = rightward[0]
+            y = rightward[1]
+            if R:
+                self.updateCellArraySimple(x,y,orient,True,False,False)
+
+        if leftward[0] >=0 and leftward[1]>=0:
+            x = leftward[0]
+            y = leftward[1]
+            if L:
+                self.updateCellArraySimple(x,y,orient,False,False,True)
+
+
+        if orient == 0:
+            if forward[0] >=0 and forward[1]>=0:
+                x = forward[0]
+                y = forward[1]
+                if F:
+                    self.cells[y][x] = self.cells[y][x]|4
+  
+        elif orient == 2:
+            if forward[0] >=0 and forward[1]>=0:
+                x = forward[0]
+                y = forward[1]
+                if F:
+                    self.cells[y][x] = 1|self.cells[y][x]
+
+        elif orient == 1:
+            if forward[0] >=0 and forward[1]>=0:
+                x = forward[0]
+                y = forward[1]
+                if F:
+                    self.cells[y][x] = 8|self.cells[y][x]
+
+        elif orient == 3:
+            if forward[0] >=0 and forward[1]>=0:
+                x = forward[0]
+                y = forward[1]
+                if F:
+                    self.cells[y][x] = 2|self.cells[y][x]
+
+
+                        
+                
+                
+                
         
         '''if self.leftwall_distance > 0.16 and self.leftwall_distance < 0.96:
             temp = int(self.leftwall_distance/0.18075)
@@ -925,6 +1086,16 @@ class controller():
                     else:
                         print(str(self.flood[i][j]) + " "),                        
             print("\n")
+    #-----------------------------------------------------------------
+    def showCell(self):
+        for i in range(MAZE_SIZE):
+            for j in range(MAZE_SIZE):
+                j = 15 - j
+                if self.cells[i][j] < 10 :
+                    print("0" + str(self.cells[i][j]) + " "),
+                else:
+                    print(str(self.cells[i][j]) + " "),                        
+            print("\n")
 
     #----------------------------------------------------------------
     def changeDestination(self,destinationx, destinationy):
@@ -1021,10 +1192,10 @@ class controller():
                 self.flood[i][j]=255
 
         queue=[]
-        self.flood[0][15]=0
+        self.flood[START_Y][START_X]=0
 
-        queue.append(0)
-        queue.append(15)
+        queue.append(START_Y)
+        queue.append(START_X)
 
         
         while (len(queue)!=0):
@@ -1070,13 +1241,19 @@ class controller():
         while(flag == 1):
             print(self.GetDirection())
             #print("bounded")'''
-        print(self.xy)
-        self.updateCellArray(self.xy[0],self.xy[1],self.orient,self.WallLeft,self.WallForward,self.WallRight)
-        #self.showFlood()
         #print(self.xy)
-
+        #self.showCell()
+        self.updateCellArray(self.xy[0],self.xy[1],self.orient,self.WallLeft,self.WallForward,self.WallRight)
+        self.showFlood()
+        #print(self.xy)
+        
         if (not (self.xy in self.final_cells)): #not (self.xy in self.final_cells)
-            self.floodFill(self.xy[0],self.xy[1],self.xprev,self.yprev)
+            if step == 1 or step == 3:
+                self.floodFill3()
+            elif step == 2:
+                self.floodFill2()
+            
+            #self.floodFill(self.xy[0],self.xy[1],self.xprev,self.yprev)
         # Printing the flood array just for debugging purpose
             #self.showFlood()
         else:
@@ -1084,14 +1261,16 @@ class controller():
                 #self.changeDestination(15,0)
                 self.floodFill2()
                 #self.showFlood()
-                self.final_cells = [[15,0],[15,0],[15,0],[15,0]]
+                self.final_cells = [[START_X,START_Y],[START_X,START_Y],[START_X,START_Y],[START_X,START_Y]]
                 step = 2
                 
             elif step == 2: 
                 self.floodFill3()   
-                #self.showFlood()
+                self.showFlood()
+                rospy.sleep(5)
                 self.final_cells = [[7,7],[7,8],[8,7],[8,8]]
                 step = 3
+
             elif step == 3:
                 print("DONE!!!")
                 rospy.sleep(1000) # just to stop wherever we are 
