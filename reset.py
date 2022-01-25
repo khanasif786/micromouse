@@ -1,4 +1,4 @@
-
+#!/usr/bin/env python
 g = open("arr.txt","w+")
 f = open("check.txt","w+")
 
