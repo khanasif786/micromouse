@@ -50,7 +50,8 @@ class controller():
                       [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
                       [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
                       [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]]
-
+         
+        # Initial flood array looks like there is no wall at all
         self.flood = [[14,13,12,11,10,9,8,7,7,8,9,10,11,12,13,14],
                      [13,12,11,10,9,8,7,6,6,7,8,9,10,11,12,13],
                      [12,11,10,9,8,7,6,5,5,6,7,8,9,10,11,12],
@@ -113,6 +114,60 @@ class controller():
         rospy.Subscriber("/odom",Odometry,self.odom_callback)
     
     # FUNCTIONS::
+
+
+    #------------------------------------------------------------
+    # This function reads from the memory and is called if previously any run is done on the maze
+    def romRead(self):
+        f = open("check.txt", "r")
+        x = f.read()
+
+        g = open("arr.txt","r")
+        y = g.read()
+        y = y.replace("[", "")
+        y = y.replace("]", "")
+        y = y.split(",")
+
+
+        ls = []
+        n = 1
+        m = 17
+        for a in range(16):
+            li = []
+            for b in range(n,m):
+                li.append(int(y[b-1]))
+            n = m
+            m = n + 16
+            ls.append(li)
+
+        f.close()
+        g.close()
+
+        return (x,ls)
+    
+    #----------------------------------------------------- 
+    # this function stores the cells found in a text file same as the physical micromouse stores
+    # in its rom memory for next runs
+    def romWrite(self,cells):
+        g = open("arr.txt","w+")
+        f = open("check.txt","w+")
+        s = ""
+        s = s+ "["
+        for i in range(16):
+            s=s + "["
+            for j in range(16):
+                s=s + str(cells[i][j])
+                if j!= 15:
+                    s=s + ","
+            s=s+"]"
+            if i!= 15:
+                s=s+","
+        s=s+"]"    
+        f.write("m")
+        f.close()
+        g.write(s)
+        g.close()
+
     #-----------------------------------------------------  
     def laser_callback(self,msg):
         #self.laser = msg
@@ -1246,7 +1301,7 @@ class controller():
         #print(self.xy)
         #self.showCell()
         self.updateCellArray(self.xy[0],self.xy[1],self.orient,self.WallLeft,self.WallForward,self.WallRight)
-        self.showFlood()
+        #self.showFlood()
         #print(self.xy)
         
         if (not (self.xy in self.final_cells)): #not (self.xy in self.final_cells)
@@ -1264,6 +1319,7 @@ class controller():
                 self.floodFill2()
                 #self.showFlood()
                 self.final_cells = [[START_X,START_Y],[START_X,START_Y],[START_X,START_Y],[START_X,START_Y]]
+                self.romWrite(self.cells)
                 step = 2
                 
             elif step == 2: 
@@ -1271,10 +1327,12 @@ class controller():
                 self.showFlood()
                 rospy.sleep(5)
                 self.final_cells = [[7,7],[7,8],[8,7],[8,8]]
+                self.romWrite(self.cells)
                 step = 3
 
             elif step == 3:
                 print("DONE!!!")
+                self.romWrite(self.cells)
                 rospy.sleep(1000) # just to stop wherever we are 
 
 
@@ -1328,6 +1386,17 @@ if __name__ == '__main__':
     # wait so that time module initializes properly
     rospy.sleep(5)
     r = rospy.Rate(60)
+    check, prevRunConfig = bot.romRead()
+    print("--- To reset the run from a fresh start please run reset.py first---")
+    print("Previous Run rom fetching..")
+    if "n" in check:
+        # nothing to do
+        pass
+    if  "m" in check:
+        print("Previous run found!!!")
+        print("Applying config to cell array")
+        bot.cells = prevRunConfig
+    bot.floodFill3()
     while not rospy.is_shutdown():
         bot.run()
-        r.sleep()
+        #r.sleep()
