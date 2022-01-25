@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # Micromouse main script
 # Sanket Sharma , Asif Khan
 import rospy
@@ -1034,28 +1035,28 @@ class controller():
         prev=0
         minimums=[1000,1000,1000,1000]
 
-        if (self.isReachable(x,y,x0,y0)):
+        if (x0>=0 and y0>=0 and self.isReachable(x,y,x0,y0)):
             if (x0==xprev and y0==yprev):
                 prev=0
             minimums[0]= self.flood[y0][x0]
             if self.isDestination(x0,y0):
                 minimums[0] = 0
 
-        if (self.isReachable(x,y,x1,y1)):
+        if (x1>=0 and y1>=0 and self.isReachable(x,y,x1,y1)):
             if (x1==xprev and y1==yprev):
                 prev=1
             minimums[1]= self.flood[y1][x1]
             if self.isDestination(x1,y1):
                 minimums[1]= 0
 
-        if (self.isReachable(x,y,x2,y2)):
+        if (x2>=0 and y2>=0 and self.isReachable(x,y,x2,y2)):
             if (x2==xprev and y2==yprev):
                 prev=2
             minimums[2]= self.flood[y2][x2]
             if self.isDestination(x2,y2):
                 minimums[2]= 0
 
-        if (self.isReachable(x,y,x3,y3)):
+        if (x3>=0 and y3>=0 and self.isReachable(x,y,x3,y3)):
             if (x3==xprev and y3==yprev):
                 prev=3
             minimums[3]= self.flood[y3][x3]
@@ -1387,9 +1388,12 @@ if __name__ == '__main__':
     rospy.sleep(5)
     r = rospy.Rate(60)
     check, prevRunConfig = bot.romRead()
-    print("--- To reset the run from a fresh start please run reset.py first---")
-    print("Previous Run rom fetching..")
+    print("")
+    print("--- To Reset The Run From a Fresh Start Please run reset.py First ---")
+    print("")
+    print("Previous Run rom fetching...")
     if "n" in check:
+        print("Fresh Start...")
         # nothing to do
         pass
     if  "m" in check:
