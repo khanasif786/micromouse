@@ -14,8 +14,7 @@ LINEAR_SPEED = 0.39
 ANGLE_THRESHOLD = 0.1 # angle precision in radian
 TURNING_THRESHOLD = 1.4
 step = 1
-START_X = 15
-START_Y = 0
+INITORIENT = 0
 
 class controller():
     # constructor here
@@ -76,10 +75,12 @@ class controller():
         self.direction = "north"  #initial direction
         self.angular_speed = ANGULAR_SPEED #0.14 # change this to change linear speed
         self.linear_speed = LINEAR_SPEED # change this to change angular speed
-        self.orient = 0 # North -> 0 ; South -> 2 ; East -> 1 ; West -> 3 // Initial orientation
-        self.xy = [START_X,START_Y] # initial position in the maze  
+        self.orient = INITORIENT # North -> 0 ; South -> 2 ; East -> 1 ; West -> 3 // Initial orientation
+        self.xy = [15,0] # initial position in the maze # Value doe'nt matter 
         self.maze_width = 2.892 # given on the portal .. https://techfest.org/2021/competitons/Micromouse.pdf
         self.angleThreshold = ANGLE_THRESHOLD
+        self.initial_x = 15 # value does'nt matter
+        self.initial_y = 0  # value does'nt matter
         
 
         
@@ -115,7 +116,6 @@ class controller():
         rospy.Subscriber("/odom",Odometry,self.odom_callback)
     
     # FUNCTIONS::
-
 
     #------------------------------------------------------------
     # This function reads from the memory and is called if previously any run is done on the maze
@@ -172,18 +172,18 @@ class controller():
     #-----------------------------------------------------  
     def laser_callback(self,msg):
         #self.laser = msg
-        self.leftwall_distance = msg.ranges[359]
-        self.rightwall_distance = msg.ranges[0]
-        self.forwardwall_distance =msg.ranges[180]
-        if(self.leftwall_distance<=0.14):
+        self.leftwall_distance = msg.ranges[359] # + msg.ranges[358] + msg.ranges[357]
+        self.rightwall_distance = msg.ranges[0] #+ msg.ranges[1] + msg.ranges[2]
+        self.forwardwall_distance = msg.ranges[180]# + msg.ranges[179] + msg.ranges[181]
+        if(self.leftwall_distance<=0.12):
             self.WallLeft = True
         else:
             self.WallLeft = False
-        if(self.rightwall_distance<=0.14):
+        if(self.rightwall_distance<=0.12):
             self.WallRight = True
         else:
             self.WallRight = False
-        if(self.forwardwall_distance<=0.14):
+        if(self.forwardwall_distance<=0.12):
             self.WallForward = True
         else:
             self.WallForward = False
@@ -194,8 +194,8 @@ class controller():
         self.odom = msg
         
         # These are temporary coordinates ( not represent real one )
-        self.coordinates[0] = int((self.odom.pose.pose.position.x + self.half_maze_width + self.half_cell_width )/(self.one_cell_width)) - 1 # orientation 0.08 0.005
-        self.coordinates[1] = (int((-self.odom.pose.pose.position.y + self.half_maze_width  +self.half_cell_width)/(self.one_cell_width)) - 1)
+        x = int((self.odom.pose.pose.position.x + self.half_maze_width + self.half_cell_width )/(self.one_cell_width))-1  # orientation 0.08 0.005
+        y = int((-self.odom.pose.pose.position.y + self.half_maze_width  +self.half_cell_width)/(self.one_cell_width))-1 
         #print("real x is ",self.coordinates[0]),
         #print("real y is ",self.coordinates[1])
         if self.orient == 0:
@@ -211,14 +211,18 @@ class controller():
             self.error = -(self.odom.pose.pose.position.y - ((8-self.xy[1])*(self.one_cell_width) - self.half_cell_width))
             #print("error is",self.error)
     
-        if(self.coordinates[0] == -1):
-            self.coordinates[0] = 0
-        if(self.coordinates[1] == -1):
-            self.coordinates[1] = 0
+        #if(x == -1):
+        #    x = 0
+        #if(y == -1):
+        #    y = 0
+        x = -x+15
+        self.coordinates[0] = x
+        self.coordinates[1] = y
+
         #print("x="+str(self.coordinates[0] )),
         #print("y="+str(self.coordinates[1] ))
         #print("\n")
-        (x,y,self.angle) = tf.transformations.euler_from_quaternion([self.odom.pose.pose.orientation.x,
+        (a,b,self.angle) = tf.transformations.euler_from_quaternion([self.odom.pose.pose.orientation.x,
                                                                      self.odom.pose.pose.orientation.y,
                                                                      self.odom.pose.pose.orientation.z,
                                                                      self.odom.pose.pose.orientation.w])
@@ -240,6 +244,22 @@ class controller():
             return str("south")
         else:
             return str("inbetween")
+
+    #-----------------------------------------------------
+    def GetInitialDirection(self): 
+        current_angle = self.angle
+        if(abs(1.57-current_angle)<0.6):
+            return 3
+        elif(abs(0-current_angle)<0.6):
+            return 0
+        elif(abs(-1.57-current_angle)<0.6):
+            return 1
+        elif(abs(3.14-current_angle)<0.6):
+            return 2
+        elif(abs(-3.14-current_angle)<0.6):
+            return 2
+        else:
+            raise Exception('Please put the bot straight')
     
     #-----------------------------------------------------
     # This is actually a simple PD controller. 
@@ -1229,10 +1249,10 @@ class controller():
                 self.flood[i][j]=255
 
         queue=[]
-        self.flood[START_Y][START_X]=0
+        self.flood[self.initial_y][self.initial_x]=0
 
-        queue.append(START_Y)
-        queue.append(START_X)
+        queue.append(self.initial_y)
+        queue.append(self.initial_x)
 
         
         while (len(queue)!=0):
@@ -1286,12 +1306,28 @@ class controller():
                 orient=1
         return(orient)
 
+    def GetInitialCoordinates(self):
+        if self.coordinates[0] == 0 or self.coordinates[0] == 1 or self.coordinates[0] == -1:
+            x = 0
+        elif self.coordinates[0] == 15 or self.coordinates[0] == 14 or self.coordinates[0] == 16:
+            x = 15
+        else:
+            raise Exception("Put the Bot at starting square x Before running Code") 
+        if self.coordinates[1] == 0 or self.coordinates[1] == 1 or self.coordinates[1] == -1:
+            y = 0
+        elif self.coordinates[1] == 15 or self.coordinates[1] == 14 or self.coordinates[1] == 16:
+            y = 15        
+        else:
+            raise Exception("Put the Bot at starting square y Before running Code") 
+        
+        return (x,y)
     #-----------------------------------------------------------------          
     def run(self):
         global step
         #print(step)
         #print(self.GetDirection())
         # Just for debugging purpose to stop the bot at first 
+        #print(self.initializeCoordinates())
         '''flag  = 0
         while(flag == 0):
             self.GoLeft()
@@ -1317,16 +1353,25 @@ class controller():
         else:
             if step == 1:
                 #self.changeDestination(15,0)
+                for x in self.final_cells:
+                    if x != self.xy:
+                        if x == [8,7]:
+                            self.cells[x[1]][x[0]] = 6
+                        if x == [7,7]:
+                            self.cells[x[1]][x[0]] = 12
+                        if x == [7,8]:
+                            self.cells[x[1]][x[0]] = 9
+                        if x == [8,8]:
+                            self.cells[x[1]][x[0]] = 3  
                 self.floodFill2()
                 #self.showFlood()
-                self.final_cells = [[START_X,START_Y],[START_X,START_Y],[START_X,START_Y],[START_X,START_Y]]
+                self.final_cells = [[self.initial_x,self.initial_y],[self.initial_x,self.initial_y],[self.initial_x,self.initial_y],[self.initial_x,self.initial_y]]
                 self.romWrite(self.cells)
                 step = 2
                 
             elif step == 2: 
                 self.floodFill3()   
                 self.showFlood()
-                rospy.sleep(5)
                 self.final_cells = [[7,7],[7,8],[8,7],[8,8]]
                 self.romWrite(self.cells)
                 step = 3
@@ -1339,7 +1384,7 @@ class controller():
 
             #self.showFlood()
             #rospy.sleep(8)
-            self.floodFill(self.xy[0],self.xy[1],self.xprev,self.yprev)
+            #self.floodFill(self.xy[0],self.xy[1],self.xprev,self.yprev)
 
         where_to_go = self.where_to_go(self.xy[0],self.xy[1],self.xprev,self.yprev,self.orient)   #self.where_to_go()
 
@@ -1387,6 +1432,14 @@ if __name__ == '__main__':
     # wait so that time module initializes properly
     rospy.sleep(5)
     r = rospy.Rate(60)
+
+    x,y = bot.GetInitialCoordinates()
+    bot.initial_x = x
+    bot.initial_y = y
+    bot.xy[0] = bot.initial_x
+    bot.xy[1] = bot.initial_y
+    bot.orient = bot.GetInitialDirection()
+    
     check, prevRunConfig = bot.romRead()
     print("")
     print("--- To Reset The Run From a Fresh Start Please run reset.py First ---")
@@ -1400,7 +1453,8 @@ if __name__ == '__main__':
         print("Previous run found!!!")
         print("Applying config to cell array")
         bot.cells = prevRunConfig
-    bot.floodFill3()
+
     while not rospy.is_shutdown():
         bot.run()
         #r.sleep()
+
